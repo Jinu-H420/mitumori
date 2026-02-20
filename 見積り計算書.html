@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>曲げ加工 見積り計算書 v4</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Hiragino Sans", "Yu Gothic", sans-serif; background: #f0f2f5; padding: 16px; }
+  .container { max-width: 960px; margin: 0 auto; }
+  h1 { font-size: 18px; color: #2F5496; margin-bottom: 2px; }
+  .purpose { font-size: 13px; color: #333; background: #E8EAF6; padding: 10px 12px; border-radius: 6px; margin-bottom: 8px; line-height: 1.6; border-left: 4px solid #2F5496; }
+  .purpose strong { color: #1A237E; }
+  .purpose code { font-size: 12px; background: #fff; padding: 1px 4px; border-radius: 3px; }
+  .diff-note { font-size: 12px; margin-bottom: 8px; }
+  .diff-note summary { cursor: pointer; color: #2F5496; }
+  .version { font-size: 11px; color: #999; margin-bottom: 14px; }
+
+  /* メイン: 左=製品情報+計算過程、右=見積計算結果。狭い画面では見積内訳を上に表示して確実に見えるように */
+  .main-grid { display: grid; grid-template-columns: 1fr minmax(240px, 300px); gap: 16px; align-items: start; }
+  @media (max-width: 900px) { .main-grid { grid-template-columns: 1fr; grid-template-rows: auto 1fr; } .result-sticky { order: -1; position: relative; top: 0; } }
+  @media (max-width: 480px) { .main-grid { gap: 12px; } .card.price-summary { padding: 12px; } table.breakdown { font-size: 12px; } }
+  .left-col { min-width: 0; }
+  .result-sticky { position: sticky; top: 16px; }
+
+  .card { background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); padding: 16px 18px; }
+  .card h2 { font-size: 14px; color: #2F5496; margin-bottom: 10px; border-bottom: 2px solid #D9E1F2; padding-bottom: 5px; }
+  .card.mb { margin-bottom: 12px; }
+
+  /* 入力行 */
+  .row { display: flex; align-items: center; margin-bottom: 7px; }
+  .row label { width: 110px; font-size: 13px; font-weight: 600; color: #333; flex-shrink: 0; }
+  .row input, .row select { flex: 1; padding: 5px 7px; font-size: 13px; border: 1px solid #ccc; border-radius: 4px; max-width: 150px; }
+  .row .unit { font-size: 12px; color: #777; margin-left: 5px; width: 40px; flex-shrink: 0; }
+  .row input.ip { background: #FFFDE7; border-color: #E0D97A; }
+  .row input.ip:focus { background: #fff; border-color: #2F5496; outline: none; }
+  .row select { background: #FFFDE7; }
+
+  /* 価格サマリーカード */
+  .price-summary { display: flex; flex-direction: column; justify-content: space-between; }
+  .price-box { border: 1px solid #ddd; border-radius: 6px; padding: 10px 14px; margin-bottom: 8px; cursor: pointer; transition: all 0.15s; }
+  .price-box:hover { border-color: #2F5496; }
+  .price-box.active { border-color: #2F5496; border-width: 2px; background: #EEF2FA; }
+  .price-box .method-name { font-size: 12px; color: #666; margin-bottom: 4px; }
+  .price-box .price { font-size: 22px; font-weight: 700; color: #333; }
+  .price-box .price .yen { font-size: 14px; color: #666; }
+  .price-box .sub { font-size: 11px; color: #888; margin-top: 2px; }
+  .price-box.active .price { color: #2F5496; }
+
+  .weight-info { font-size: 12px; color: #555; background: #f8f9fa; padding: 8px 10px; border-radius: 4px; margin-top: 4px; }
+  .weight-info b { color: #333; }
+  .result-block p { margin: 6px 0; font-size: 13px; }
+  .result-block strong { color: #2F5496; }
+  .result-bend { font-size: 12px; color: #555; background: #f5f5f5; padding: 6px 8px; border-radius: 4px; margin: 6px 0; border-left: 3px solid #888; }
+  .result-option { margin-top: 10px; padding: 10px; border-radius: 4px; margin-bottom: 8px; font-weight: 700; font-size: 15px; }
+  .result-lead { font-size: 12px; color: #333; margin-bottom: 10px; }
+  .result-option.m1 { background: #E3F2FD; color: #1565C0; border: 2px solid #90CAF9; }
+  .result-option.m2 { background: #E8F5E9; color: #2E7D32; border: 2px solid #81C784; }
+  .result-option .opt-label { font-size: 13px; font-weight: 700; }
+  .result-option .opt-total { font-size: 18px; }
+  .result-option .opt-yen { font-size: 13px; font-weight: 400; }
+  .result-note { margin-top: 10px; font-size: 11px; color: #666; }
+
+  /* 計算過程 */
+  .calc-row { display: flex; align-items: center; margin-bottom: 5px; min-height: 28px; }
+  .calc-row label { width: 150px; font-size: 13px; color: #555; flex-shrink: 0; }
+  .calc-row .val { flex: 1; display: flex; align-items: center; }
+  .calc-row input.ci {
+    width: 100px; padding: 4px 6px; font-size: 13px; font-weight: 600;
+    border: 1px dashed #ccc; border-radius: 3px; background: #f8f9fa; text-align: right;
+  }
+  .calc-row input.ci:focus { border-color: #2F5496; border-style: solid; background: #fff; outline: none; }
+  .calc-row input.ci.over { background: #FFF3E0; border-color: #FF9800; border-style: solid; }
+  .calc-row .unit { font-size: 12px; color: #777; margin-left: 5px; }
+  .hole-summary { font-size: 12px; color: #555; margin-left: 10px; flex-shrink: 0; }
+  .hole-total { font-weight: 700; color: #1565C0; }
+  .row-maru30 { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .row-maru30 label { min-width: 18px; font-weight: 600; color: #555; }
+  .row-maru30 .hole-summary { margin-left: auto; font-weight: 600; color: #1565C0; }
+  .calc-row .rb { font-size: 11px; color: #F57C00; background: none; border: none; cursor: pointer; margin-left: 4px; display: none; }
+  .calc-row .rb.show { display: inline; }
+
+  .basis { font-size: 11px; color: #666; background: #f8f9fa; padding: 5px 10px; border-radius: 4px; margin: 1px 0 7px 150px; line-height: 1.6; }
+  .basis b { color: #2F5496; }
+
+  .sep { border-top: 1px solid #e0e0e0; margin: 8px 0; }
+  .sep.bold { border-top: 2px solid #2F5496; margin: 10px 0; }
+
+  .calc-m1-total label { color: #1565C0; font-weight: 700; }
+  .calc-m2-total label { color: #2E7D32; font-weight: 700; }
+  .total-row { display: flex; align-items: center; padding: 6px 0; }
+  .total-row label { width: 150px; font-size: 15px; font-weight: 700; color: #C00000; }
+  .total-row .val { font-size: 18px; font-weight: 700; color: #C00000; }
+
+  .method-badge { display: inline-block; font-size: 12px; padding: 3px 10px; border-radius: 12px; margin-bottom: 6px; }
+  .method-badge.under { background: #E3F2FD; color: #1565C0; }
+  .method-badge.over { background: #FBE9E7; color: #D84315; }
+
+  .warn { background: #FFF3E0; color: #E65100; padding: 6px 10px; border-radius: 4px; font-size: 12px; margin-bottom: 6px; display: none; }
+
+  table.ref { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 6px; }
+  table.ref th { background: #D9E1F2; padding: 3px 5px; border: 1px solid #bbb; }
+  table.ref td { padding: 3px 5px; border: 1px solid #ddd; text-align: center; }
+  table.ref td.hl { background: #FFFDE7; font-weight: bold; }
+
+  /* 内訳テーブル */
+  table.breakdown { width: 100%; border-collapse: collapse; }
+  table.breakdown td { padding: 4px 2px; font-size: 13px; }
+  table.breakdown .bl { color: #555; width: 110px; }
+  table.breakdown .br { text-align: right; font-weight: 600; color: #333; padding-right: 2px; }
+  table.breakdown .bu { color: #777; font-size: 12px; width: 40px; padding-left: 4px; }
+  table.breakdown .detail { font-size: 11px; color: #888; }
+  table.breakdown .detail.br { font-weight: 400; }
+  table.breakdown .sep-row td { border-bottom: 1px solid #e0e0e0; padding: 0; height: 6px; }
+  table.breakdown .sep-row.bold td { border-bottom: 2px solid #2F5496; }
+  table.breakdown .bold-label { font-weight: 700; color: #2F5496; font-size: 14px; }
+  table.breakdown .bold-val { font-weight: 700; color: #2F5496; font-size: 16px; }
+  table.breakdown tr.total td { font-weight: 700; color: #C00000; font-size: 16px; padding-top: 8px; }
+  table.breakdown tr.total .bu { font-size: 13px; }
+  table.breakdown tr.total.total-blue td { color: #1565C0; font-size: 15px; }
+  table.breakdown tr.total.total-option-a td { color: #0D47A1; font-size: 15px; background: #E3F2FD; }
+  table.breakdown tr.total.total-option-b td { color: #1B5E20; font-size: 15px; background: #E8F5E9; }
+  table.breakdown tr.row-subtle td { font-weight: 500; color: #666; font-size: 12px; padding-top: 2px; }
+  table.breakdown tr.row-subtle .br { font-weight: 500; }
+  table.breakdown tr.row-subtle .bu { font-size: 11px; }
+
+  .yocho-warn { font-size:12px; color:#E65100; background:#FFF3E0; padding:6px 10px; border-radius:4px; margin:4px 0 6px 0; }
+  .yocho-opt { display:block; font-size:12px; padding:4px 0; cursor:pointer; }
+  .yocho-opt input { margin-right:6px; }
+  .yocho-opt .yocho-detail { color:#888; font-size:11px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>曲げ加工 見積り計算書</h1>
+  <p class="purpose"><strong>材料・切断・曲げ・穴あけは別項目</strong>です。重さと曲げは関係ありますが、切断と曲げは別物です。<br>
+  見積合計 ＝ <strong>材料費</strong>（鉄の単価×重量）＋ <strong>切断費</strong> ＋ <strong>曲げ工賃</strong>（曲げkg単価×重量）＋ <strong>穴あけ</strong>。材料単価はデフォルト150円/kg（<code>data/rates.json</code>で上書き可）。<strong>小物（2kg以下）は材料費250円/個（定額）</strong>。曲げkg単価の初期値は板厚で異なります（1.6/2.3→185、3.2/4.5→190、6mm以上→185円/kg。価格計算用_4の530円再現）。</p>
+  <details class="diff-note"><summary>価格計算用_4 との主な違い・参照</summary>
+  <ul style="margin:6px 0 0 0;padding-left:18px;font-size:12px;color:#555;">
+    <li><strong>入力</strong>: 価格計算用_4は「板厚・縦・横・余長」。このHTMLは「縦L・横W・余長」（L/Wのどれを板幅・展開長に当てるかは元の定義に合わせてください）。</li>
+    <li><strong>重量</strong>: 価格計算用_4は 板厚×板幅×展開長×比重/1e6。HTMLは (L+余長)×(W+余長)×板厚×比重/1e6（余長を縦横とも加算）。</li>
+    <li><strong>出力</strong>: 価格計算用_4は曲げ工賃中心。HTMLは 材料費＋穴あけ（円/kg）・材料費＋切断（切断長mm）・材料費／切断費／曲げ／穴あけ、曲げを足した見積2種類を表示。</li>
+    <li><strong>材料費＋穴あけ（円/kg）</strong>: 曲げは含めない。キログラム単価で表示。</li>
+    <li><strong>材料費＋切断（切断長）</strong>: 曲げは含めない。切断長をmmで表示。</li>
+    <li><strong>曲げ単価</strong>: 価格計算用_4のJ9相当。板厚別初期値。形状×重量×長さの表は <code>data/曲げ価格表.csv</code>。</li>
+    <li><strong>加工工賃のみ（v3.0）</strong>: 材料費を含まない加工賃。価格表＋数量スライド＋小物割引＋難易度・オプション（中押し/逆曲げ/長尺目押し/深曲げ）、穴あけは全項目合算。実装仕様書 v3.0 準拠。</li>
+  </ul>
+  </details>
+  <p class="version">課金重量・提示価格(売値)／社内基準(155円/kg)・想定粗利は参考表示</p>
+
+  <div class="main-grid">
+    <div class="left-col">
+      <!-- 製品情報 -->
+      <div class="card mb">
+        <h2>製品情報</h2>
+        <div class="row"><label>材質</label><select id="material"><option value="SS400">SS400（黒皮）</option><option value="BONDE">ボンデ</option><option value="MIGAKI">ミガキ</option><option value="PICKLING">酸洗</option><option value="SUS304">SUS304</option><option value="CHP">CHP（縞板）</option></select></div>
+        <div class="row"><label>板厚</label><input type="number" id="thickness" value="6" class="ip" step="0.1" min="0.1" placeholder="mm"><span class="unit">mm</span></div>
+        <div class="row"><label>縦 L</label><input type="number" id="tate" value="396" class="ip" step="0.1"><span class="unit">mm</span></div>
+        <div class="row"><label>横 W</label><input type="number" id="yoko" value="70" class="ip" step="0.1"><span class="unit">mm</span></div>
+        <div id="yocho-section">
+          <div class="row"><label>余長</label><input type="number" id="yocho" value="20" class="ip" step="0.1" min="0"><span class="unit">mm</span><span id="yocho-auto-label" style="font-size:11px;color:#888;margin-left:4px;">(自動)</span></div>
+          <div id="yocho-radio-area"></div>
+        </div>
+        <div class="row"><label>形状</label><select id="shape"><option value="L曲げ">L曲げ（1回）</option><option value="Z曲げ">Z曲げ（2回）</option><option value="コの字曲げ">コの字曲げ（2回）</option><option value="C型曲げ">C型曲げ（4回）</option><option value="三方曲げ">三方曲げ（3回）</option><option value="四方曲げ">四方曲げ（4回）</option><option value="ハット曲げ">ハット曲げ（4回）</option><option value="手入力">手入力</option></select></div>
+        <div class="row" id="manual-bends-row" style="display:none;"><label>曲げ回数</label><input type="number" id="manual-bends" value="1" class="ip" step="1" min="1"><span class="unit">回</span></div>
+        <div class="row"><label>数量</label><input type="number" id="qty" value="1" class="ip" step="1" min="1"><span class="unit">個</span></div>
+        <div class="sep"></div>
+        <div class="row"><label>丸穴(30φ未満)</label><input type="number" id="maru" value="0" class="ip" step="1" min="0" title="穴の数"><span class="unit">個</span><span class="hole-summary">50円/個 合計 <span id="maru-total" class="hole-total">0</span> 円</span></div>
+        <div class="row"><label>長穴</label><input type="number" id="naga" value="0" class="ip" step="1" min="0" title="穴の数"><span class="unit">個</span><span class="hole-summary">70円/個 合計 <span id="naga-total" class="hole-total">0</span> 円</span></div>
+        <div class="sep"></div>
+        <div style="font-size:12px;font-weight:600;color:#555;margin-bottom:6px;">丸穴(30φ以上) — 穴径と個数を入力</div>
+        <div class="row row-maru30">
+          <label>1</label>
+          <input type="number" id="maru30-dia-1" value="0" class="ip" step="0.1" min="30" placeholder="φ" title="穴径 mm"><span class="unit">mm</span>
+          <input type="number" id="maru30-n-1" value="0" class="ip" step="1" min="0" title="個数"><span class="unit">個</span>
+          <span class="hole-summary" id="maru30-result-1">— 円</span>
+        </div>
+        <div class="row row-maru30">
+          <label>2</label>
+          <input type="number" id="maru30-dia-2" value="0" class="ip" step="0.1" min="30" placeholder="φ" title="穴径 mm"><span class="unit">mm</span>
+          <input type="number" id="maru30-n-2" value="0" class="ip" step="1" min="0" title="個数"><span class="unit">個</span>
+          <span class="hole-summary" id="maru30-result-2">— 円</span>
+        </div>
+        <div class="row row-maru30">
+          <label>3</label>
+          <input type="number" id="maru30-dia-3" value="0" class="ip" step="0.1" min="30" placeholder="φ" title="穴径 mm"><span class="unit">mm</span>
+          <input type="number" id="maru30-n-3" value="0" class="ip" step="1" min="0" title="個数"><span class="unit">個</span>
+          <span class="hole-summary" id="maru30-result-3">— 円</span>
+        </div>
+        <div class="sep"></div>
+        <div class="row"><label>ポンチ</label><input type="number" id="punch-n" value="0" class="ip" step="1" min="0" title="個数"><span class="unit">個</span><span class="hole-summary">30円/個 合計 <span id="punch-total" class="hole-total">0</span> 円</span></div>
+        <div class="row"><label>ピアス</label><input type="number" id="pierce-n" value="0" class="ip" step="1" min="0" title="個数"><span class="unit">個</span><span class="hole-summary">板厚別単価 合計 <span id="pierce-total" class="hole-total">0</span> 円</span></div>
+      </div>
+
+      <!-- 計算過程 -->
+      <div class="card mb">
+    <h2>計算過程（値を変更して上書き可）</h2>
+    <div class="warn" id="warn"></div>
+
+    <div class="calc-row"><label>比重/単位重量</label><div class="val"><input type="number" id="c-gravity" class="ci" step="0.01" readonly></div></div>
+    <div class="calc-row"><label>展開寸法</label><div class="val"><span id="c-dim" style="font-size:12px; color:#555;"></span></div></div>
+    <div class="calc-row"><label>重量</label><div class="val"><input type="number" id="c-weight" class="ci" step="0.001"><span class="unit">kg</span><button class="rb" id="rw" title="自動に戻す">↺</button></div></div>
+    <div class="basis" id="b-weight"></div>
+
+    <div class="sep"></div>
+    <div class="calc-row"><label>板厚グループ</label><div class="val"><span id="c-group" style="font-size:13px;font-weight:600;"></span></div></div>
+    <div class="calc-row"><label>長さ区分</label><div class="val"><span id="c-lcat" style="font-size:13px;font-weight:600;"></span></div></div>
+    <div class="calc-row"><label>曲げ回数</label><div class="val"><span id="c-bends" style="font-size:13px;font-weight:600;"></span></div></div>
+
+    <div class="sep"></div>
+
+    <!-- 材料費：鉄の単価×重量 -->
+    <div id="detail-material">
+      <div style="font-size:13px;font-weight:600;color:#2F5496;margin-bottom:4px;">材料費（鉄の単価×重量）</div>
+      <div class="calc-row"><label>材料単価</label><div class="val"><input type="number" id="c-material-rate" class="ci" step="1" value="150" title="鉄の単価（円/kg）。デフォルト150。data/rates.json で上書き可。2kg以下は250円定額"><span class="unit">円/kg</span><button class="rb" id="r-matrate">↺</button></div></div>
+      <div class="basis" id="b-material"></div>
+    </div>
+
+    <div class="sep"></div>
+
+    <!-- 切断費：切断長×単価 -->
+    <div id="detail-cut">
+      <div style="font-size:13px;font-weight:600;color:#2F5496;margin-bottom:4px;">切断費（切断長×単価）</div>
+      <div class="calc-row"><label>切断長</label><div class="val"><input type="number" id="c-cutlen" class="ci" step="0.1"><span class="unit">mm</span><button class="rb" id="r-cutlen">↺</button></div></div>
+      <div class="calc-row"><label>切断単価</label><div class="val"><input type="number" id="c-cutrate" class="ci" step="1" value="150" title="円/m"><span class="unit">円/m</span><button class="rb" id="r-cutrate">↺</button></div></div>
+      <div class="basis" id="b-cut"></div>
+    </div>
+
+    <div class="sep"></div>
+
+    <!-- 曲げ工賃：計算方法1のベース単価（価格計算用_4のJ9相当）重量×円/kg -->
+    <div id="detail-m1">
+      <div style="font-size:13px;font-weight:600;color:#2F5496;margin-bottom:4px;">曲げ工賃（1:kg単価）</div>
+      <div class="calc-row"><label>kg単価</label><div class="val"><input type="number" id="c-kgrate" class="ci" step="0.1" placeholder="185" title="計算方法1のベース単価。1.6/2.3→185、3.2/4.5→190、6mm以上→185（530円再現）"><span class="unit">円/kg</span><button class="rb" id="r-kgrate">↺</button></div></div>
+      <div class="basis" id="b-m1"></div>
+      <div class="basis" id="b-m1-rule">板厚別初期値: 1.6/2.3→185、3.2/4.5→190、6mm以上→185円/kg（価格計算用_4のJ9相当・530円再現。変更可）</div>
+    </div>
+
+    <div class="sep"></div>
+
+    <!-- 穴あけ -->
+    <div style="font-size:13px;font-weight:600;color:#2F5496;margin-bottom:4px;">穴あけ</div>
+    <div class="calc-row"><label>穴あけ加算（1個あたり）</label><div class="val"><input type="number" id="c-hole" class="ci" step="1"><span class="unit">円</span><button class="rb" id="r-hole">↺</button></div></div>
+    <div class="basis" id="b-hole"></div>
+
+    <div class="sep bold"></div>
+
+    <div class="calc-row"><label>1個あたり合計</label><div class="val"><span id="c-unit" style="font-size:13px;font-weight:700;"></span></div></div>
+    <div class="sep bold"></div>
+    <div class="calc-row"><label>材料費（×数量）</label><div class="val"><span id="c-mat-total" style="font-weight:600;"></span><span class="unit">円</span></div></div>
+    <div class="calc-row"><label>切断費（×数量）</label><div class="val"><span id="c-cut-total" style="font-weight:600;"></span><span class="unit">円</span></div></div>
+    <div class="calc-row calc-m1-total"><label>曲げ工賃（×数量）</label><div class="val"><span id="c-m1-total" style="font-weight:700;color:#1565C0;"></span><span class="unit">円</span></div></div>
+    <div class="calc-row"><label>穴あけ（×数量）</label><div class="val"><span id="c-hole-total" style="font-weight:600;"></span><span class="unit">円</span></div></div>
+    <div class="total-row"><label>見積合計（税抜）</label><div class="val"><span id="c-total" style="font-size:14px;"></span></div></div>
+      </div>
+
+      <!-- 参考テーブル -->
+      <div class="card mb">
+        <h2>参考: 単価テーブル（<span id="ref-grp"></span>）</h2>
+        <div id="ref-u20"></div>
+        <div id="ref-o20" style="margin-top:8px;"></div>
+      </div>
+    </div>
+
+    <!-- 右: 見積計算結果（材料・切断・曲げ・穴あけ・合計） -->
+    <div class="result-sticky">
+      <div class="card price-summary">
+        <h2>見積内訳（税抜）</h2>
+        <table class="breakdown" style="margin-bottom:8px;">
+          <tr><td class="bl">kg単価</td><td class="br" id="s-m1-teiji">-</td><td class="bu">円</td></tr>
+          <tr><td class="bl">材料費+切断長</td><td class="br" id="s-mat">-</td><td class="bu">円</td></tr>
+          <tr><td class="bl">曲げ工賃</td><td class="br" id="s-bend">-</td><td class="bu">円</td></tr>
+          <tr><td class="bl">穴あけ</td><td class="br" id="s-hole">-</td><td class="bu">円</td></tr>
+          <tr class="total total-option-a"><td class="bl">kg単価+曲げ</td><td class="br" id="s-mat-hole-bend">-</td><td class="bu">円</td></tr>
+          <tr class="total total-option-b"><td class="bl">切断費+曲げ</td><td class="br" id="s-mat-cut-bend">-</td><td class="bu">円</td></tr>
+        </table>
+        <div class="v21-block" style="margin-top:12px;padding:10px;background:#f0f7ff;border-radius:6px;font-size:12px;">
+          <div style="font-weight:700;color:#1565C0;margin-bottom:6px;">加工工賃のみ（v3.0・材料費含まず）</div>
+          <div style="margin-bottom:6px;font-size:11px;color:#555;">難易度・オプション</div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px 12px;margin-bottom:8px;">
+            <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="opt-nakagoshi" class="v3-opt"> 中押し(×<input type="number" id="opt-nakagoshi-factor" class="v3-opt" value="1.5" min="0" step="0.1" style="width:48px;font-size:11px;padding:1px 2px;text-align:right;"></label>
+            <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="opt-reverse" class="v3-opt"> 逆曲げ(×<input type="number" id="opt-reverse-factor" class="v3-opt" value="1.2" min="0" step="0.1" style="width:48px;font-size:11px;padding:1px 2px;text-align:right;"></label>
+            <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="opt-long-meoshi" class="v3-opt"> 長尺目押し(+<input type="number" id="opt-long-meoshi-add" class="v3-opt" value="2500" min="0" step="1" style="width:56px;font-size:11px;padding:1px 2px;text-align:right;">円)</label>
+            <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="opt-fukabori" class="v3-opt"> 深曲げ・干渉回避(+<input type="number" id="opt-fukabori-add" class="v3-opt" value="3000" min="0" step="1" style="width:56px;font-size:11px;padding:1px 2px;text-align:right;">円)</label>
+          </div>
+          <div><span id="s-v21-bend-label">曲げ</span>: <span id="s-v21-bend">-</span></div>
+          <div><span id="s-v21-hole-label">穴あけ</span>: <span id="s-v21-hole">-</span></div>
+          <div style="font-weight:700;margin-top:4px;">加工賃合計（税抜）: <span id="s-v21-total-ex">-</span> 円</div>
+          <div style="color:#555;">加工賃合計（税込）: <span id="s-v21-total-in">-</span> 円</div>
+        </div>
+        <div class="weight-info result-block">
+          <p>・材料重量： <b id="wi-weight">-</b> kg</p>
+          <p>・提示金額： <span id="s-teiji">-</span>（<span id="s-teiji-rate">-</span>円/kg）／ 社内基準： <span id="s-naiki">-</span> ／ 想定粗利： <span id="s-rieki">-</span></p>
+        </div>
+        <p class="version" style="margin-top:6px;font-size:11px;color:#888;" id="wi-dim"></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== 最終確定仕様 =====
+// 1. 課金重量: 板厚×(L+余長)×(W+余長)×7.85÷1,000,000
+//    余長: t1.6/t2.3=50mm, t3.2=30mm, t4.5〜=20mm, ボンデ時=100mm
+// 2. 提示価格(売値): 基本185円/kg, 主力t3.2/t4.5のみ190円/kg
+// 3. 社内基準(原価): 155円/kg 固定
+// 4. 想定粗利 = 提示金額 - 社内基準
+
+// ===== データ =====
+const TG={"1.0":"A","1.2":"A","1.6":"A","2.3":"A","3.2":"B","4.5":"B","6.0":"B","9.0":"C","12.0":"C","16.0":"D","19.0":"E"};
+const U20={A:{1670:[200,400],2505:[250,450],3340:[300,500]},B:{1670:[150,300],2505:[200,400],3340:[200,400],4175:[250,500]},C:{1670:[200,350],2505:[200,400],3340:[250,500]},D:{1670:[200,400]},E:{1670:[500,500]}};
+const O20={A:{base:20,add:15,len:{1670:0,2505:3,3340:6}},B:{base:15,add:10,len:{1670:0,2505:3,3340:6,4175:9}},C:{base:18,add:13,len:{1670:0,2505:3,3340:6}},D:{base:20,add:15,len:{1670:0}},E:{base:25,add:20,len:{1670:0}}};
+const SB={"L曲げ":1,"Z曲げ":2,"コの字曲げ":2,"C型曲げ":4,"三方曲げ":3,"四方曲げ":4,"ハット曲げ":4};
+const GR={SS400:7.85,BONDE:7.85,MIGAKI:7.85,PICKLING:7.85,SUS304:7.93,CHP:null};
+const SW={"2.3":19.76,"3.0":25.1,"3.2":26.82,"4.5":37.02,"6.0":48.8};
+const HM=50,HN=70,WT=20;
+// 丸穴30φ以上：板厚別単価（data/hole_prices.json 丸穴_標準に準拠。板厚tのときの円/個）
+var HOLE_MARU30_BY_T=[[0.5,6,50],[8,9,50],[10,12,80],[16,16,150],[19,19,200],[20,20,220],[22,22,220],[25,25,230],[28,28,250],[30,30,270]];
+function getMaru30UnitPrice(t){
+  var mm=parseFloat(t)||0;
+  for(var i=0;i<HOLE_MARU30_BY_T.length;i++){
+    var r=HOLE_MARU30_BY_T[i];
+    if(mm>=r[0]&&mm<=r[1])return r[2];
+  }
+  return 100;
+}
+function getMaru30Row(diaId,nId){ var d=parseFloat(($(diaId)&&$(diaId).value)||0)||0; var n=parseInt(($(nId)&&$(nId).value)||0)||0; return{dia:d,n:n}; }
+
+// ===== v2.1 加工工賃のみ（bending_price_table + 板厚別ピアス）
+var LENGTH_THRESHOLDS_V21=[835,1670,2505,3048,99999];
+var LENGTH_COLS_V21=['〜835mm','〜1670mm','〜2505mm','〜3048mm','3048mm超'];
+var BENDING_TABLE_V21=[
+  {shape:'L曲げ',w:10,c:[500,800,1000,1300,2000]},{shape:'L曲げ',w:20,c:[800,1000,1300,1500,2500]},{shape:'L曲げ',w:30,c:[1000,1200,1500,1800,3000]},{shape:'L曲げ',w:50,c:[2000,2500,3000,3500,4000]},{shape:'L曲げ',w:80,c:[3000,3500,4000,5000,6000]},{shape:'L曲げ',w:100,c:[4000,5000,6000,7000,8000]},{shape:'L曲げ',w:150,c:[5000,6000,7000,8000,9000]},{shape:'L曲げ',w:9999,c:[6000,7000,8000,9000,10000]},
+  {shape:'コの字曲げ',w:10,c:[800,1200,1500,2000,3000]},{shape:'コの字曲げ',w:20,c:[1200,1500,2000,2300,3800]},{shape:'コの字曲げ',w:30,c:[1500,1800,2300,2700,4500]},{shape:'コの字曲げ',w:50,c:[3000,3800,4500,5300,6000]},{shape:'コの字曲げ',w:80,c:[4500,5300,6000,7500,9000]},{shape:'コの字曲げ',w:100,c:[6000,7500,9000,10500,12000]},{shape:'コの字曲げ',w:150,c:[7500,9000,10500,12000,13500]},{shape:'コの字曲げ',w:9999,c:[9000,10500,12000,13500,15000]},
+  {shape:'Z曲げ',w:10,c:[800,1200,1500,2000,3000]},{shape:'Z曲げ',w:20,c:[1200,1500,2000,2300,3800]},{shape:'Z曲げ',w:30,c:[1500,1800,2300,2700,4500]},{shape:'Z曲げ',w:50,c:[3000,3800,4500,5300,6000]},{shape:'Z曲げ',w:80,c:[4500,5300,6000,7500,9000]},{shape:'Z曲げ',w:100,c:[6000,7500,9000,10500,12000]},{shape:'Z曲げ',w:150,c:[7500,9000,10500,12000,13500]},{shape:'Z曲げ',w:9999,c:[9000,10500,12000,13500,15000]},
+  {shape:'C型曲げ',w:10,c:[1400,2200,2700,3500,5400]},{shape:'C型曲げ',w:20,c:[2200,2700,3500,4100,6800]},{shape:'C型曲げ',w:30,c:[2700,3200,4100,4900,8100]},{shape:'C型曲げ',w:50,c:[5400,6800,8100,9500,10800]},{shape:'C型曲げ',w:80,c:[8100,9500,10800,13500,16200]},{shape:'C型曲げ',w:100,c:[10800,13500,16200,18900,21600]},{shape:'C型曲げ',w:150,c:[13500,16200,18900,21600,24300]},{shape:'C型曲げ',w:9999,c:[16200,18900,21600,24300,27000]},
+  {shape:'ハット曲げ',w:10,c:[1400,2200,2700,3500,5400]},{shape:'ハット曲げ',w:20,c:[2200,2700,3500,4100,6800]},{shape:'ハット曲げ',w:30,c:[2700,3200,4100,4900,8100]},{shape:'ハット曲げ',w:50,c:[5400,6800,8100,9500,10800]},{shape:'ハット曲げ',w:80,c:[8100,9500,10800,13500,16200]},{shape:'ハット曲げ',w:100,c:[10800,13500,16200,18900,21600]},{shape:'ハット曲げ',w:150,c:[13500,16200,18900,21600,24300]},{shape:'ハット曲げ',w:9999,c:[16200,18900,21600,24300,27000]}
+];
+function shapeForV21(s){ return (s==='三方曲げ'||s==='四方曲げ')?'C型曲げ':s; }
+function getBasePriceV21(shape,weightKg,lengthMm){
+  var sh=shapeForV21(shape);
+  var rows=BENDING_TABLE_V21.filter(function(r){return r.shape===sh;}).sort(function(a,b){return a.w-b.w;});
+  if(!rows.length)return null;
+  var row=null; for(var i=0;i<rows.length;i++){ if(rows[i].w>=weightKg){ row=rows[i]; break; } }
+  if(!row)row=rows[rows.length-1];
+  var col=0; for(var j=0;j<LENGTH_THRESHOLDS_V21.length;j++){ if(lengthMm<=LENGTH_THRESHOLDS_V21[j]){ col=j; break; } }
+  return row.c[col];
+}
+function quantityFactorV21(lot){ if(lot<=4)return 1.5; if(lot<=19)return 1.0; return 0.8; }
+// ピアス単価（円/個）: 〜t2.3→30, 〜t4.5→60, 〜t6→30, 〜t9→100, 〜t12→150, t12超→200
+function piercePriceV21(t){ if(t<=2.3)return 30; if(t<=4.5)return 60; if(t<=6)return 30; if(t<=9)return 100; if(t<=12)return 150; return 200; }
+
+// 計算方法1のベース単価（価格計算用_4のJ9相当）。板厚別初期値。入力で変更可。
+function getDefaultKgRate(t){
+  if(t==='1.6'||t==='2.3')return 185;
+  if(t==='3.2'||t==='4.5')return 190;
+  return 185; // 6mm以上（価格計算用_4の530円再現のため185）
+}
+
+// 余長テーブル（SS400基準）
+const YOCHO={"1.0":50,"1.2":50,"1.6":50,"2.3":50,"3.2":30,"4.5":20,"6.0":20,"9.0":20,"12.0":20,"16.0":20,"19.0":20};
+
+// 余長オプション判定
+function getYochoOptions(mat, t, tate) {
+  // SS400: 自動
+  if (mat === 'SS400') {
+    if (t==='1.0'||t==='1.2'||t==='1.6'||t==='2.3') return {mode:'auto', value:50};
+    if (t==='3.2') return {mode:'auto', value:30};
+    return {mode:'auto', value:20};
+  }
+  // ボンデ
+  if (mat === 'BONDE') {
+    // 在庫品(PL1.6/2.3/3.2): 自動+50mm
+    if (['1.6','2.3','3.2'].includes(t)) return {mode:'auto', value:50};
+    // PL1.2（非在庫・頻出）: 2択
+    if (t === '1.2')
+      return {mode:'manual', options:[{label:'標準',value:50},{label:'余裕あり',value:100}]};
+    // その他のボンデ非在庫: 3択へフォールスルー
+  }
+  // 非在庫材(ボンデその他/ミガキ/酸洗): 3択
+  if (['BONDE','MIGAKI','PICKLING'].includes(mat)) {
+    var opts = [{label:'基本余長', value:100}];
+    if (tate < 1829) {
+      var sub = 1829 - tate;
+      opts.push({label:'サブロク活用', value:sub, note:'展開長1829mm（端材' + sub + 'mm）'});
+      opts.push({label:'均等配分', value:Math.round(sub/2), note:'両端バランス'});
+    }
+    return {mode:'manual', options:opts};
+  }
+  // SUS304/CHP: 自動(SS400と同じテーブル)
+  return {mode:'auto', value: YOCHO[t]||20};
+}
+
+// 余長UI描画
+function renderYochoUI(opts, tate) {
+  var yochoEl = $('yocho');
+  var autoLabel = $('yocho-auto-label');
+  var radioArea = $('yocho-radio-area');
+  if (!yochoEl || !radioArea) return;
+
+  if (opts.mode === 'auto') {
+    // 自動モード: input表示、ラジオ非表示
+    yochoEl.value = opts.value;
+    yochoEl.style.display = '';
+    if (autoLabel) autoLabel.style.display = '';
+    radioArea.innerHTML = '';
+  } else {
+    // 手動モード: ラジオボタン表示
+    yochoEl.style.display = 'none';
+    if (autoLabel) autoLabel.style.display = 'none';
+    var isTwo = opts.options.length === 2;
+    var warnText = isTwo ? '\u26A0 ボンデPL1.2（非在庫） - 余長を選択' : '\u26A0 非在庫材 - 余長を選択してください（製品長: ' + tate + 'mm）';
+    var html = '<div class="yocho-warn">' + warnText + '</div>';
+    for (var i = 0; i < opts.options.length; i++) {
+      var o = opts.options[i];
+      var checked = i === 0 ? ' checked' : '';
+      var tenkai = tate + o.value;
+      var detail = o.note ? ' <span class="yocho-detail">(' + o.note + ')</span>' : '';
+      html += '<label class="yocho-opt"><input type="radio" name="yocho-radio" value="' + o.value + '"' + checked + '> ' + o.label + ' +' + o.value + 'mm \u2192 展開長 ' + tenkai + 'mm' + detail + '</label>';
+    }
+    radioArea.innerHTML = html;
+    // 初期値セット
+    yochoEl.value = opts.options[0].value;
+    // ラジオ変更イベント
+    var radios = radioArea.querySelectorAll('input[name="yocho-radio"]');
+    for (var j = 0; j < radios.length; j++) {
+      radios[j].addEventListener('change', function() {
+        yochoEl.value = this.value;
+        ov.weight = null; ov.kgrate = null; ov.hole = null; ov.cutlen = null;
+        calc();
+      });
+    }
+  }
+}
+
+// 課金重量(kg) = 板厚×(L+余長)×(W+余長)×比重÷1,000,000 → 小数2桁丸め（Excel ROUND準拠）
+function getWtKajyo(t, L, W, yocho){
+  var th=parseFloat(t);
+  return Math.round(th*(L+yocho)*(W+yocho)*7.85/1e6*100)/100;
+}
+
+// 提示価格単価: 基本185円/kg, 主力t3.2/t4.5のみ190円/kg（小口割増なし）
+function getTeijiRate(t, kg){
+  return (t==="3.2"||t==="4.5") ? 190 : 185;
+}
+
+const ov = { weight:null, kgrate:null, hole:null, cutlen:null };
+
+function $(id){return document.getElementById(id);}
+function fmt(n){return Math.round(n).toLocaleString();}
+
+// 重量（余長は引数で渡す）→ 小数2桁丸め（Excel ROUND準拠）
+function getWt(t,ta,yo,yc,mat){
+  const th=parseFloat(t),a=ta+yc,b=yo+yc;
+  var raw;
+  if(mat==='CHP'){const u=SW[t];raw=u?(a/1000)*(b/1000)*u:th*a*b*7.85/1e6;}
+  else{raw=th*a*b*(GR[mat]||7.85)/1e6;}
+  return Math.round(raw*100)/100;
+}
+
+// 長さ区分
+function findCat(g,yo,tbl){
+  const cs=Object.keys(tbl[g]).map(Number).sort((a,b)=>a-b);
+  for(const c of cs){if(yo<=c)return c;}return null;
+}
+
+// 方法1: kg単価（曲げ工賃ベース）
+function calcM1(g,yo,wt,bends){
+  const isUnder=wt<WT;
+  if(isUnder){
+    const cat=findCat(g,yo,U20);
+    if(!cat)return{cost:0,cat:null,kgRate:0,basis:"長さ範囲外"};
+    const[mn,mx]=U20[g][cat];
+    const per=Math.round(mn+(mx-mn)*Math.min(yo/cat,1));
+    const cost=per*bends;
+    const kgRate=wt>0?Math.round(cost/wt*10)/10:0;
+    return{cost,cat,kgRate,basis:`箇所単価 ${per}円 × ${bends}回 = <b>${fmt(cost)}円</b>（${kgRate}円/kg相当）`};
+  } else {
+    const d=O20[g];
+    const cs=Object.keys(d.len).map(Number).sort((a,b)=>a-b);
+    let cat=null,la=0;
+    for(const c of cs){if(yo<=c){cat=c;la=d.len[c];break;}}
+    if(!cat)return{cost:0,cat:null,kgRate:0,basis:"長さ範囲外"};
+    const r1=d.base+la,ra=d.add+la;
+    const c1=r1*wt,ca=ra*(bends-1)*wt;
+    const cost=Math.round(c1+ca);
+    const kgRate=wt>0?Math.round(cost/wt*10)/10:0;
+    let b=`<b>1曲げ:</b> ${r1}円/kg × ${wt.toFixed(1)}kg = ${fmt(c1)}円`;
+    if(bends>1)b+=`<br><b>追加${bends-1}回:</b> ${ra}円/kg × ${wt.toFixed(1)}kg × ${bends-1} = ${fmt(ca)}円`;
+    b+=`<br>合計: <b>${fmt(cost)}円</b>（${kgRate}円/kg相当）`;
+    return{cost,cat,kgRate,basis:b};
+  }
+}
+
+// 材料費（鉄の単価×重量）・切断費（切断長×単価）は曲げと別項目
+function calcMaterialCut(wt){
+  const matEl=$('c-material-rate');
+  const cutLenEl=$('c-cutlen');
+  const cutRateEl=$('c-cutrate');
+  const materialRate=matEl?parseFloat(matEl.value)||150:150;
+  const cutLen=cutLenEl?parseFloat(cutLenEl.value)||0:0;
+  const cutRate=cutRateEl?parseFloat(cutRateEl.value)||150:150;
+  const isKomono=wt<=2.0;
+  const komonoPrice=250;
+  const materialCost=isKomono?komonoPrice:Math.round(materialRate*wt);
+  const cutCost=Math.round(cutLen/1000*cutRate);
+  const bMat=isKomono?`<b>小物（${wt.toFixed(2)}kg ≤ 2kg）→ 定額 <b>${komonoPrice}円</b></b>`:`鉄 ${materialRate}円/kg × ${wt.toFixed(2)}kg = <b>${fmt(materialCost)}円</b>`;
+  const bCut=cutLen>0?`切断長 ${cutLen}mm × ${cutRate}円/m = <b>${fmt(cutCost)}円</b>`:'切断長 0 → 0円';
+  return{materialCost,cutCost,materialRate,cutRate,cutLen,basisMat:bMat,basisCut:bCut,isKomono};
+}
+
+// 切断長の自動計算（価格計算用_4相当: 展開周長の2倍 = 4×((縦+余長)+(横+余長))）→ 材料費+切断費が630になる
+function autoCutLen(ta,yo,yc){
+  if(yc!=null&&!isNaN(yc))return Math.round(4*((ta+yc)+(yo+yc)));
+  return 2*(ta+yo);
+}
+
+// 参考テーブル
+function renderRef(g,catU,catO){
+  $('ref-grp').textContent=`グループ${g}`;
+  const u=U20[g];
+  let h='<b style="font-size:12px;">20kg未満（箇所単価）</b><table class="ref"><tr><th>長さ区分</th><th>min</th><th>max</th></tr>';
+  for(const[c,[mn,mx]]of Object.entries(u)){const hi=parseInt(c)===catU?' class="hl"':'';h+=`<tr><td${hi}>〜${c}mm</td><td${hi}>${mn}円</td><td${hi}>${mx}円</td></tr>`;}
+  h+='</table>';$('ref-u20').innerHTML=h;
+  const o=O20[g];
+  h='<b style="font-size:12px;">20kg以上（重量単価）</b><table class="ref"><tr><th>長さ区分</th><th>1曲げ</th><th>追加</th></tr>';
+  for(const[c,add]of Object.entries(o.len)){const hi=parseInt(c)===catO?' class="hl"':'';h+=`<tr><td${hi}>〜${c}mm</td><td${hi}>${o.base+add}円/kg</td><td${hi}>+${o.add+add}円/kg</td></tr>`;}
+  h+='</table>';$('ref-o20').innerHTML=h;
+}
+
+// ===== メイン =====
+function calc(){
+  try {
+  const thEl=$('thickness');
+  if(!thEl){const w=$('wi-weight');if(w)w.textContent='?';return;}
+  // 板厚は数値入力 → TG用キーに正規化（1.0,1.2,1.6,2.3,3.2,4.5,6.0,9.0,12.0,16.0,19.0）
+  const tVal=parseFloat(thEl.value);
+  const tKeys=['1.0','1.2','1.6','2.3','3.2','4.5','6.0','9.0','12.0','16.0','19.0'];
+  let t='6.0';
+  if(!isNaN(tVal)&&tVal>0){ for(var ti=0;ti<tKeys.length;ti++){ if(tVal<=parseFloat(tKeys[ti])){ t=tKeys[ti]; break; } if(ti===tKeys.length-1)t=tKeys[ti]; } }
+  const ta=parseFloat(($('tate')&&$('tate').value)||0)||0;
+  const yo=parseFloat(($('yoko')&&$('yoko').value)||0)||0;
+  const mat=($('material')&&$('material').value)||'SS400';
+
+  // 余長: getYochoOptionsで判定、UIはrenderYochoUIで描画済み
+  const yochoEl=$('yocho');
+  let yc=yochoEl?parseFloat(yochoEl.value):NaN;
+  if (!yc && yc!==0) yc=getYochoOptions(mat, t, ta).value || 20;
+  else if (yc<0) yc=0;
+  const shape=($('shape')&&$('shape').value)||'L曲げ';
+  const qty=parseInt(($('qty')&&$('qty').value)||1)||1;
+  const maru=parseInt(($('maru')&&$('maru').value)||0)||0;
+  const naga=parseInt(($('naga')&&$('naga').value)||0)||0;
+
+  const manualRow=$('manual-bends-row');
+  if(manualRow)manualRow.style.display=shape==='手入力'?'flex':'none';
+  const bends=shape==='手入力'?(parseInt(($('manual-bends')&&$('manual-bends').value)||1)||1):(SB[shape]||1);
+  const g=TG[t];
+  if(!g){const w=$('wi-weight');if(w)w.textContent='板厚未対応';return;}
+
+  // 課金重量（余長テーブル・7.85固定）
+  const kajyoWt=getWtKajyo(t,ta,yo,yc);
+  const teijiRate=getTeijiRate(t,kajyoWt);
+  const teiji=Math.round(kajyoWt*teijiRate);
+  const naiki=Math.round(kajyoWt*155);
+  const rieki=teiji-naiki;
+
+  // 見積計算結果（最終確定仕様）: 材料重量・提示金額・社内基準・想定粗利（曲げ工賃・合計は後で設定）
+  const wi=$('wi-weight');if(wi)wi.textContent=kajyoWt.toFixed(2);
+  const wd=$('wi-dim');if(wd)wd.textContent='L'+ta+' / W'+yo+' 余長'+yc+'mm';
+  const st=$('s-teiji');if(st)st.textContent='¥'+fmt(teiji);
+  const str=$('s-teiji-rate');if(str)str.textContent=teijiRate;
+  const sn=$('s-naiki');if(sn)sn.textContent='¥'+fmt(naiki);
+  const sr=$('s-rieki');if(sr)sr.textContent='¥'+fmt(rieki);
+
+  // 比重・展開寸法・重量（方法1/2/3用）
+  const cg=$('c-gravity');if(cg)cg.value=mat==='CHP'?(SW[t]||'(7.85)'):(GR[mat]||7.85);
+  const cd=$('c-dim');if(cd)cd.innerHTML=`(${ta}+${yc}) × (${yo}+${yc}) = <b>${ta+yc} × ${yo+yc}</b> mm`;
+
+  const autoWt=getWt(t,ta,yo,yc,mat);
+  const wt=ov.weight!==null?ov.weight:autoWt;
+  const cw=$('c-weight');if(cw){cw.value=autoWt.toFixed(2);if(ov.weight===null){cw.classList.remove('over');const rw=$('rw');if(rw)rw.classList.remove('show');}}
+
+  const sg=GR[mat]||7.85;
+  const bw=$('b-weight');if(bw)bw.innerHTML=mat==='CHP'&&SW[t]?`${ta+yc}/${1000} × ${yo+yc}/${1000} × ${SW[t]}kg/m² = <b>${autoWt.toFixed(2)}kg</b>`:`${t} × ${ta+yc} × ${yo+yc} × ${sg} ÷ 1,000,000 = <b>${autoWt.toFixed(2)}kg</b>`;
+
+  const badge=$('wi-badge');
+  if(badge){badge.textContent=kajyoWt<10?'&lt;10kg':'≥10kg';badge.className='method-badge '+(kajyoWt<10?'under':'over');}
+
+  const cgr=$('c-group');if(cgr)cgr.textContent=`${g}（t${t}）`;
+  const cb=$('c-bends');if(cb)cb.textContent=`${bends}回（${shape}）`;
+
+  const cl=$('c-cutlen');if(cl&&ov.cutlen===null)cl.value=Math.round(autoCutLen(ta,yo,yc));
+
+  // 材料費・切断費（曲げと別項目）
+  const mc=calcMaterialCut(wt);
+  const bmat=$('b-material');if(bmat)bmat.innerHTML=mc.basisMat;
+  const bcut=$('b-cut');if(bcut)bcut.innerHTML=mc.basisCut;
+
+  // 曲げ工賃: 計算方法1のベース単価（J9相当）× 重量。6mm以上は185で530円再現
+  const m1=calcM1(g,yo,wt,bends);
+  const ckr=$('c-kgrate');if(ckr){if(ov.kgrate===null){var defKg=getDefaultKgRate(t);ckr.value=defKg;ckr.classList.remove('over');var rkr=$('r-kgrate');if(rkr)rkr.classList.remove('show');}}
+  const kgRate=ov.kgrate!==null?ov.kgrate:(parseFloat(ckr&&ckr.value)||getDefaultKgRate(t));
+  const m1cost=Math.round(kgRate*wt);
+  const bendCost=m1cost;
+  const bm1=$('b-m1');if(bm1)bm1.innerHTML=ov.kgrate!==null?`${kgRate}円/kg × ${wt.toFixed(1)}kg = <b>${fmt(m1cost)}円</b>（手動設定）`:`重量 ${wt.toFixed(2)}kg × ${kgRate}円/kg = <b>${fmt(m1cost)}円</b>`;
+  const clc=$('c-lcat');if(clc)clc.textContent=m1.cat?`〜${m1.cat}mm`:'範囲外';
+
+  // 穴あけ（30φ未満＋長穴＋30φ以上は穴径・個数ごとに板厚別単価で計算）
+  const maru30Unit=getMaru30UnitPrice(t);
+  var holeMaru30=0;
+  for(var ri=1;ri<=3;ri++){
+    var r=getMaru30Row('maru30-dia-'+ri,'maru30-n-'+ri);
+    var rowCost=(r.dia>=30?maru30Unit:0)*r.n;
+    holeMaru30+=rowCost;
+    var resEl=$('maru30-result-'+ri);
+    if(resEl)resEl.textContent=r.n===0?'— 円':(r.dia>=30?(maru30Unit+'円/個×'+r.n+' = '+fmt(rowCost)+'円'):'— 円（30φ以上で入力）');
+  }
+  const punchCount=Math.max(0,parseInt(($('punch-n')&&$('punch-n').value)||0)||0);
+  const pierceCount=Math.max(0,parseInt(($('pierce-n')&&$('pierce-n').value)||0)||0);
+  const punchUnit=30;
+  const pierceUnit=piercePriceV21(parseFloat(t));
+  const punchTotal=punchUnit*punchCount;
+  const pierceTotal=pierceUnit*pierceCount;
+  const autoHole=(HM*maru)+(HN*naga)+holeMaru30+punchTotal+pierceTotal;
+  const holeCost=ov.hole!==null?ov.hole:autoHole;
+  const ch=$('c-hole');if(ch){ch.value=autoHole;if(ov.hole===null){ch.classList.remove('over');const rh=$('r-hole');if(rh)rh.classList.remove('show');}}
+  const ptEl=$('punch-total');if(ptEl)ptEl.textContent=fmt(punchTotal);
+  const prEl=$('pierce-total');if(prEl)prEl.textContent=fmt(pierceTotal);
+  let hb='';
+  if(maru>0)hb+=`丸穴30φ未満 ${HM}円×${maru} = ${fmt(HM*maru)}円`;
+  if(maru>0&&(naga>0||holeMaru30>0||punchTotal>0||pierceTotal>0))hb+=' + ';
+  if(naga>0)hb+=`長穴 ${HN}円×${naga} = ${fmt(HN*naga)}円`;
+  if(naga>0&&(holeMaru30>0||punchTotal>0||pierceTotal>0))hb+=' + ';
+  if(holeMaru30>0)hb+=`丸穴30φ以上（板厚${t}→${maru30Unit}円/個） = ${fmt(holeMaru30)}円`;
+  if(holeMaru30>0&&(punchTotal>0||pierceTotal>0))hb+=' + ';
+  if(punchTotal>0)hb+=`ポンチ 30円×${punchCount} = ${fmt(punchTotal)}円`;
+  if(punchTotal>0&&pierceTotal>0)hb+=' + ';
+  if(pierceTotal>0)hb+=`ピアス（板厚${t}→${pierceUnit}円/個）×${pierceCount} = ${fmt(pierceTotal)}円`;
+  if(!maru&&!naga&&!holeMaru30&&!punchTotal&&!pierceTotal)hb='なし';
+  const bho=$('b-hole');if(bho)bho.innerHTML=hb;
+  const mt=$('maru-total');if(mt)mt.textContent=fmt(HM*maru);
+  const nt=$('naga-total');if(nt)nt.textContent=fmt(HN*naga);
+
+  // 1個あたり合計 ＝ 材料＋切断＋曲げ＋穴あけ。見積合計 ＝ それ×数量 → 10円単位丸め
+  const perUnit=mc.materialCost+mc.cutCost+bendCost+holeCost;
+  const total=Math.round(perUnit*qty/10)*10;
+  const cu=$('c-unit');if(cu)cu.textContent=fmt(perUnit)+' 円（材料 '+fmt(mc.materialCost)+' + 切断 '+fmt(mc.cutCost)+' + 曲げ '+fmt(bendCost)+' + 穴 '+fmt(holeCost)+'）';
+  const cmat=$('c-mat-total');if(cmat)cmat.textContent=fmt(mc.materialCost*qty);
+  const ccut=$('c-cut-total');if(ccut)ccut.textContent=fmt(mc.cutCost*qty);
+  const c1t=$('c-m1-total');if(c1t)c1t.textContent=fmt(bendCost*qty);
+  const chot=$('c-hole-total');if(chot)chot.textContent=fmt(holeCost*qty);
+  const ct=$('c-total');if(ct)ct.textContent=fmt(total);
+
+  // 右パネル: 見積内訳（すべて税抜・総額）。材料費+切断長＝Excel T2/T3相当で材料費+穴あけを10円単位で丸め（430等）
+  const matCutLenVal=Math.round((mc.materialCost+holeCost)*qty/10)*10;
+  const smat=$('s-mat');if(smat)smat.textContent=fmt(matCutLenVal);
+  const sbend=$('s-bend');if(sbend)sbend.textContent=fmt(bendCost*qty);
+  const shole=$('s-hole');if(shole)shole.textContent=fmt(holeCost*qty);
+  // kg単価: 穴が1つもないとき材料費のみ（10円丸め）、それ以外は材料費+穴あけ
+  const hasHole=(maru>0)||(naga>0)||(holeMaru30>0)||(punchTotal>0)||(pierceTotal>0);
+  const kgTanka=!hasHole?Math.round(mc.materialCost/10)*10:(mc.materialCost+holeCost);
+  const sm1=$('s-m1-teiji');if(sm1)sm1.textContent=fmt(kgTanka);
+  // kg単価+曲げ と 切断費+曲げ（材料費は含めない）
+  const totalMatHoleBend=Math.round((kgTanka+bendCost)*qty/10)*10;
+  const totalMatCutBend=Math.round((mc.cutCost+bendCost)*qty/10)*10;
+  const smatholebend=$('s-mat-hole-bend');if(smatholebend)smatholebend.textContent=fmt(totalMatHoleBend);
+  const smatcutbend=$('s-mat-cut-bend');if(smatcutbend)smatcutbend.textContent=fmt(totalMatCutBend);
+
+  // 加工工賃のみ v3.0（材料費含まず）。穴あけは全項目合算。曲げに難易度・オプション加算を適用
+  var lengthMm=Math.max(ta+yc,yo+yc), longSide=lengthMm;
+  var holeV21=(HM*maru)+(HN*naga)+holeMaru30+punchTotal+pierceTotal;
+  var sv21b=$('s-v21-bend');var sv21h=$('s-v21-hole');var sv21ex=$('s-v21-total-ex');var sv21in=$('s-v21-total-in');
+  var baseV21=getBasePriceV21(shape,wt,lengthMm);
+  if(baseV21==null){
+    if(sv21b)sv21b.textContent='—（形状が価格表にありません）';
+    if(sv21h)sv21h.textContent='穴あけ 合計 '+fmt(holeV21)+'円';
+    if(sv21ex)sv21ex.textContent=fmt(holeV21);
+    if(sv21in)sv21in.textContent=fmt(Math.round(holeV21*1.1));
+  } else {
+    var qtyF=quantityFactorV21(qty);
+    var bendV21=baseV21*qtyF;
+    var smallF=(longSide<=300&&wt<=1.0)?0.8:1.0;
+    bendV21=Math.max(300,Math.round(bendV21*smallF));
+    var optNaka=($('opt-nakagoshi')&&$('opt-nakagoshi').checked);
+    var optRev=($('opt-reverse')&&$('opt-reverse').checked);
+    var optLong=($('opt-long-meoshi')&&$('opt-long-meoshi').checked)&&(lengthMm>=1000);
+    var optFuka=($('opt-fukabori')&&$('opt-fukabori').checked);
+    var nakaFactor=parseFloat(($('opt-nakagoshi-factor')&&$('opt-nakagoshi-factor').value))||1.5;
+    var revFactor=parseFloat(($('opt-reverse-factor')&&$('opt-reverse-factor').value))||1.2;
+    var longAdd=parseInt(($('opt-long-meoshi-add')&&$('opt-long-meoshi-add').value),10)||2500;
+    var fukaAdd=parseInt(($('opt-fukabori-add')&&$('opt-fukabori-add').value),10)||3000;
+    if(optNaka)bendV21=Math.round(bendV21*nakaFactor);
+    if(optRev)bendV21=Math.round(bendV21*revFactor);
+    if(optLong)bendV21+=longAdd;
+    if(optFuka)bendV21+=fukaAdd;
+    var v21TotalEx=bendV21+holeV21, v21TotalIn=Math.round(v21TotalEx*1.1);
+    var bendDetail='基準'+fmt(baseV21)+'円 ×数量'+qtyF+' ×小物'+smallF;
+    if(optNaka)bendDetail+=' ×中押し'+nakaFactor;
+    if(optRev)bendDetail+=' ×逆曲げ'+revFactor;
+    if(optLong)bendDetail+=' +長尺目押し'+(longAdd).toLocaleString();
+    if(optFuka)bendDetail+=' +深曲げ'+(fukaAdd).toLocaleString();
+    bendDetail+=' = <b>'+fmt(bendV21)+'円</b>';
+    if(sv21b)sv21b.innerHTML=bendDetail;
+    if(sv21h)sv21h.textContent='穴あけ 合計 '+fmt(holeV21)+'円';
+    if(sv21ex)sv21ex.textContent=fmt(v21TotalEx);
+    if(sv21in)sv21in.textContent=fmt(v21TotalIn);
+  }
+
+  const warn=$('warn');if(warn){warn.style.display='none';if(m1.cat===null){warn.textContent=`グループ${g}で横${yo}mmは範囲外`;warn.style.display='block';}}
+
+  if(typeof renderRef==='function')renderRef(g,wt<WT?m1.cat:null,wt>=WT?m1.cat:null);
+  }catch(err){
+    const w=$('wi-weight');if(w)w.textContent='エラー';
+    const wd=$('wi-dim');if(wd)wd.textContent=err.message||String(err);
+    console.error('calc error',err);
+  }
+}
+
+// 上書き管理
+function bindOv(key,el,rb){
+  el.addEventListener('input',()=>{const v=parseFloat(el.value);if(!isNaN(v)){ov[key]=v;el.classList.add('over');rb.classList.add('show');calc();}});
+  rb.addEventListener('click',()=>{ov[key]=null;el.classList.remove('over');rb.classList.remove('show');calc();});
+}
+var defaultMaterialRate=150;
+function init(){
+  // data/rates.json から材料単価を読み込み（同一オリジンで開いている場合のみ）
+  fetch('data/rates.json').then(function(r){return r.json();}).then(function(data){
+    if(data&&data.材料単価_円_per_kg!=null){
+      defaultMaterialRate=data.材料単価_円_per_kg;
+      var el=$('c-material-rate');if(el)el.value=defaultMaterialRate;
+    }
+  }).catch(function(){});
+
+  var a=$('c-weight'),b=$('rw');if(a&&b)bindOv('weight',a,b);
+  a=$('c-kgrate');b=$('r-kgrate');if(a&&b)bindOv('kgrate',a,b);
+  a=$('c-hole');b=$('r-hole');if(a&&b)bindOv('hole',a,b);
+  a=$('c-cutlen');b=$('r-cutlen');if(a&&b)bindOv('cutlen',a,b);
+  a=$('c-material-rate');b=$('r-matrate');if(a&&b){b.addEventListener('click',function(){a.value=defaultMaterialRate;calc();});}
+  a=$('c-cutrate');b=$('r-cutrate');if(a&&b){b.addEventListener('click',function(){a.value=150;calc();});}
+  ['c-material-rate','c-cutrate'].forEach(function(id){var el=$(id);if(el){el.addEventListener('input',calc);el.addEventListener('change',calc);}});
+  var list=document.querySelectorAll('.ip, #thickness, #material, #shape, #manual-bends');
+  for(var i=0;i<list.length;i++){var el=list[i];el.addEventListener('input',function(){ov.weight=null;ov.kgrate=null;ov.hole=null;ov.cutlen=null;calc();});el.addEventListener('change',function(){ov.weight=null;ov.kgrate=null;ov.hole=null;ov.cutlen=null;calc();});}
+  var v3opts=document.querySelectorAll('.v3-opt');
+  for(var j=0;j<v3opts.length;j++){v3opts[j].addEventListener('change',calc);}
+  // 材質・板厚・縦変更時に余長UIを再描画（板厚は数値→TGキーに正規化）
+  function updateYochoUI(){
+    var m=($('material')&&$('material').value)||'SS400';
+    var thEl=$('thickness');
+    var tVal=thEl?parseFloat(thEl.value):NaN;
+    var tKeys=['1.0','1.2','1.6','2.3','3.2','4.5','6.0','9.0','12.0','16.0','19.0'];
+    var t='6.0';
+    if(!isNaN(tVal)&&tVal>0){ for(var ti=0;ti<tKeys.length;ti++){ if(tVal<=parseFloat(tKeys[ti])){ t=tKeys[ti]; break; } if(ti===tKeys.length-1)t=tKeys[ti]; } }
+    var ta=parseFloat(($('tate')&&$('tate').value)||0)||0;
+    var opts=getYochoOptions(m, t, ta);
+    renderYochoUI(opts, ta);
+    ov.weight=null;ov.kgrate=null;ov.hole=null;ov.cutlen=null;
+    calc();
+  }
+  a=$('material');if(a)a.addEventListener('change',updateYochoUI);
+  a=$('thickness');if(a){a.addEventListener('input',updateYochoUI);a.addEventListener('change',updateYochoUI);}
+  a=$('tate');if(a){a.addEventListener('input',updateYochoUI);a.addEventListener('change',updateYochoUI);}
+  // 初回描画
+  updateYochoUI();
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);
+else init();
+window.addEventListener('load',function(){calc();});
+</script>
+</body>
+</html>

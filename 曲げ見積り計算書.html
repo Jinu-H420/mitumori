@@ -1,0 +1,1664 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>曲げ見積り計算書（曲げ工賃のみ・検算用）</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; overflow: auto; }
+    body { font-family: "Hiragino Sans", "Yu Gothic", sans-serif; background: #f0f2f5; padding: 10px; font-size: 14px; }
+    .container { max-width: 100%; height: 100%; display: flex; flex-direction: column; }
+    .header { flex-shrink: 0; margin-bottom: 8px; }
+    h1 { font-size: 18px; color: #2F5496; display: inline; }
+    .purpose { font-size: 12px; color: #555; display: inline; margin-left: 10px; }
+    .main { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; flex: 0 1 auto; min-height: 0; }
+    .left { display: flex; flex-direction: column; gap: 6px; min-height: 0; overflow: auto; }
+    .right { min-height: 0; overflow: auto; }
+    .card { background: #fff; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.06); padding: 12px; flex-shrink: 0; }
+    .card.h-fill { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+    .card.h-fill .card-body { flex: 1; min-height: 0; overflow: auto; }
+    .card h2 { font-size: 14px; color: #2F5496; margin-bottom: 8px; border-bottom: 1px solid #D9E1F2; padding-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+    .row { display: flex; align-items: center; margin-bottom: 6px; }
+    .row label { width: 100px; font-size: 13px; font-weight: 600; color: #333; flex-shrink: 0; }
+    .row input[type="number"], .row select { padding: 4px 6px; font-size: 13px; border: 1px solid #ccc; border-radius: 3px; width: 80px; }
+    .row .unit { font-size: 12px; color: #777; margin-left: 4px; }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 8px; }
+    .grid2 .row { margin-bottom: 4px; }
+    .computed { background: #f0f7ff; padding: 5px 8px; border-radius: 3px; font-size: 13px; margin-top: 4px; }
+    .computed span { font-weight: 700; }
+    .opts { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px 8px; }
+    .opts .opt-ttl { width: 100%; font-size: 12px; color: #555; font-weight: 600; }
+    .opts label {
+      display: inline-flex; align-items: center; gap: 5px; cursor: pointer; font-size: 13px; font-weight: 600;
+      padding: 5px 12px; border-radius: 20px;
+      border: 1.5px solid #c8c8c8; background: #efefef; color: #888;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+      user-select: none;
+    }
+    .opts label:hover { border-color: #aaa; background: #e3e3e3; color: #555; }
+    .opts input[type="checkbox"] { position: absolute; opacity: 0; width: 0; height: 0; }
+    .opts label:has(input[type="checkbox"]:checked) { background: #2F5496; color: #fff; border-color: #2F5496; }
+    .opts label:has(input[type="checkbox"]:checked):hover { background: #244075; border-color: #244075; }
+    .opts label:has(input[type="checkbox"]:checked) input[type="number"] { background: rgba(255,255,255,0.2); color: #fff; border-color: rgba(255,255,255,0.35); }
+    .opts label input[type="number"] { padding: 1px 4px; font-size: 11px; text-align: right; border-radius: 3px; border: 1px solid #bbb; background: #fff; color: #333; }
+    .result-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .result-table th, .result-table td { padding: 5px 8px; text-align: left; border-bottom: 1px solid #eee; }
+    .result-table th { color: #555; font-weight: 600; width: 55%; font-size: 12px; }
+    .result-table td.num { text-align: right; font-weight: 600; }
+    .result-table tr.total th, .result-table tr.total td { border-top: 2px solid #2F5496; padding-top: 6px; font-size: 15px; color: #2F5496; font-weight: 700; }
+    .result-table tr.total td.num { font-size: 18px; }
+    .note { font-size: 12px; color: #888; margin-top: 4px; }
+    .ref-section { flex-shrink: 0; margin-top: 0; max-height: 42%; min-height: 140px; display: flex; flex-direction: column; overflow: hidden; }
+    .ref-section .card { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+    .ref-section .card-body { overflow: auto; flex: 1; }
+    .ref-table { border-collapse: collapse; font-size: 12px; width: 100%; }
+    .ref-table th, .ref-table td { border: 1px solid #ddd; padding: 3px 6px; text-align: right; }
+    .ref-table th { background: #D9E1F2; color: #333; }
+    .ref-table th.text-left { text-align: left; }
+    .ref-table td.text-left { text-align: left; }
+    .ref-table td.ref-used { background: #fff3cd; }
+    .ref-table td.ref-used .ref-input { font-weight: 700; background: #fff8e0; }
+    .ref-table .ref-input { width: 65px; padding: 2px 4px; font-size: 12px; text-align: right; border: 1px solid #b8b8b8; border-radius: 2px; background: #f8faff; cursor: text; }
+    .ref-table .ref-input:hover { border-color: #7a9cd4; background: #eef3fc; }
+    .ref-table .ref-input:focus { border-color: #2F5496; outline: none; background: #fff; box-shadow: 0 0 0 2px rgba(47,84,150,0.18); }
+    .ref-qty { font-size: 12px; color: #555; margin-top: 6px; }
+    .no-spin::-webkit-inner-spin-button, .no-spin::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    .no-spin { -moz-appearance: textfield; }
+    /* 実績記録セクション */
+    .record-section { margin-top: 10px; }
+    .record-section .card { border-left: 3px solid #2F5496; }
+    .record-section h2 { font-size: 14px; color: #2F5496; margin-bottom: 8px; border-bottom: 1px solid #D9E1F2; padding-bottom: 4px; }
+    .record-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+    .record-row label { font-size: 13px; font-weight: 600; color: #333; flex-shrink: 0; }
+    .record-row input { padding: 4px 6px; font-size: 13px; border: 1px solid #ccc; border-radius: 3px; }
+    .record-row input[type="number"] { width: 110px; }
+    .record-row input[type="text"] { width: 200px; }
+    .record-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .btn { padding: 5px 14px; font-size: 13px; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; }
+    .btn-primary { background: #2F5496; color: #fff; }
+    .btn-primary:hover { background: #244075; }
+    .btn-secondary { background: #e0e0e0; color: #333; }
+    .btn-secondary:hover { background: #d0d0d0; }
+    .btn-danger { background: #dc3545; color: #fff; font-size: 12px; padding: 3px 8px; }
+    .btn-danger:hover { background: #c82333; }
+    .record-msg { font-size: 13px; color: #28a745; font-weight: 600; margin-left: 8px; transition: opacity 0.5s; }
+    .record-list-section { margin-top: 10px; }
+    .record-list-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .record-list-table th, .record-list-table td { padding: 5px 8px; text-align: left; border-bottom: 1px solid #eee; }
+    .record-list-table th { background: #D9E1F2; color: #333; font-weight: 600; font-size: 12px; }
+    .record-list-table td { font-size: 13px; }
+    .record-list-table td.num { text-align: right; }
+    .record-list-table tr:hover { background: #f8f9fa; }
+    .gap-positive { color: #dc3545; }
+    .gap-negative { color: #28a745; }
+    /* 得意先参照モーダル */
+    .customer-modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); z-index: 9998; justify-content: center; align-items: center; }
+    .customer-modal-overlay.show { display: flex; }
+    .customer-modal { background: #fff; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); width: 90%; max-width: 480px; max-height: 85vh; display: flex; flex-direction: column; overflow: hidden; z-index: 9999; }
+    .customer-modal h3 { font-size: 13px; color: #2F5496; padding: 10px 12px; border-bottom: 1px solid #D9E1F2; flex-shrink: 0; }
+    .customer-modal-search { padding: 8px 12px; border-bottom: 1px solid #eee; flex-shrink: 0; }
+    .customer-modal-search label { font-size: 11px; color: #555; display: block; margin-bottom: 4px; }
+    .customer-modal-search input { width: 100%; padding: 6px 8px; font-size: 12px; border: 1px solid #ccc; border-radius: 4px; }
+    .customer-modal-list { overflow: auto; flex: 1; min-height: 200px; }
+    .customer-modal-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    .customer-modal-table th, .customer-modal-table td { padding: 6px 8px; text-align: left; border-bottom: 1px solid #eee; }
+    .customer-modal-table th { background: #D9E1F2; color: #333; font-weight: 600; position: sticky; top: 0; }
+    .customer-modal-table tbody tr { cursor: pointer; }
+    .customer-modal-table tbody tr:hover { background: #e8eef7; }
+    .customer-modal-table tbody tr.selected { background: #2F5496; color: #fff; }
+    .customer-modal-table td.num { text-align: right; width: 80px; }
+    .customer-modal-actions { padding: 8px 12px; border-top: 1px solid #eee; display: flex; gap: 8px; justify-content: flex-end; flex-shrink: 0; }
+    /* ショートカットバー */
+    .shortcut-bar { position: fixed; bottom: 0; left: 0; right: 0; height: 40px; background: #1a2a4a; display: flex; align-items: stretch; z-index: 1000; border-top: 2px solid #0a1a3a; }
+    .sc-group { display: flex; flex: 1; border-right: 3px solid #0a1a3a; }
+    .sc-group:last-child { border-right: none; }
+    .sc-item { display: flex; align-items: center; flex: 1; min-width: 0; border-right: 1px solid #2a3a5a; cursor: pointer; user-select: none; }
+    .sc-item:last-child { border-right: none; }
+    .sc-item:hover { background: #2a3a5a; }
+    .sc-item.sc-empty { cursor: default; }
+    .sc-item.sc-empty:hover { background: transparent; }
+    .sc-key { background: #f0f0f0; color: #1a2a4a; font-size: 10px; font-weight: 700; padding: 2px 5px; margin: 0 6px 0 6px; border-radius: 2px; white-space: nowrap; flex-shrink: 0; }
+    .sc-label { color: #fff; font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sc-item.sc-record .sc-key  { background: #d4a017; color: #000; }
+    .sc-item.sc-record .sc-label { color: #ffe066; }
+    .sc-item.sc-reset  .sc-key  { background: #aaa; color: #000; }
+    .sc-item.sc-reset  .sc-label { color: #ccc; }
+    body { padding-bottom: 48px; }
+    /* 記憶ボタン */
+    .mem-btn { margin-left: auto; font-size: 11px; padding: 3px 10px; border: 1.5px solid #c8c8c8; background: #f0f0f0; color: #999; border-radius: 12px; cursor: pointer; font-weight: 700; transition: background 0.15s, color 0.15s, border-color 0.15s; white-space: nowrap; flex-shrink: 0; }
+    .mem-btn:hover { border-color: #999; background: #e4e4e4; color: #555; }
+    .mem-btn.active { background: #27ae60; color: #fff; border-color: #27ae60; }
+    .mem-btn.active:hover { background: #219a52; border-color: #1e8449; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>曲げ見積り計算書</h1>
+      <span class="purpose">曲げ工賃のみ・材料費・穴あけなし。寸法入力で重量・長さ自動計算。</span>
+    </div>
+    <div class="main">
+      <div class="left">
+        <div class="card">
+          <h2>寸法</h2>
+          <div class="grid2">
+            <div class="row"><label>板厚（鉄）</label>
+              <select id="thickness">
+                <option value="">—</option>
+                <option value="0.5">0.5</option>
+                <option value="0.6">0.6</option>
+                <option value="0.8">0.8</option>
+                <option value="1">1</option>
+                <option value="1.2">1.2</option>
+                <option value="1.6">1.6</option>
+                <option value="2">2</option>
+                <option value="2.3">2.3</option>
+                <option value="3.2">3.2</option>
+                <option value="4.5">4.5</option>
+                <option value="6">6</option>
+                <option value="9">9</option>
+                <option value="12">12</option>
+                <option value="16">16</option>
+              </select><span class="unit">mm</span></div>
+            <div class="row"><label>縦 L</label><input type="number" id="tate" value="" min="0" step="any" placeholder="mm" class="no-spin"><span class="unit">mm</span></div>
+            <div class="row"><label>横 W</label><input type="number" id="yoko" value="" min="0" step="any" placeholder="mm" class="no-spin"><span class="unit">mm</span></div>
+            <div class="row"><label>余長</label><input type="number" id="yocho" value="" min="0" step="0.1" placeholder="板厚で自動" class="no-spin"><span class="unit">mm</span></div>
+          </div>
+          <div class="computed">重量 <span id="computed-weight">—</span> kg　長さ <span id="computed-length">—</span> mm</div>
+        </div>
+        <div class="card">
+          <h2>入力 <button type="button" class="mem-btn" id="mem-btn-input" title="形状・数量・オプションを記憶。F2リセットを押しても復元されます。緑＝記憶中">★ 記憶</button></h2>
+          <p class="note" style="margin-bottom:4px;">重量・曲げ長さは寸法から自動計算。直接入力で上書きも可（寸法を変えるとリセット）。</p>
+          <div class="grid2">
+            <div class="row"><label>形状</label>
+              <select id="shape">
+                <option value="">—</option>
+                <option value="L曲げ">L曲げ</option>
+                <option value="Z曲げ">Z曲げ</option>
+                <option value="コの字曲げ">コの字</option>
+                <option value="C型曲げ">C型</option>
+                <option value="三方曲げ">三方</option>
+                <option value="四方曲げ">四方</option>
+                <option value="ハット曲げ">ハット</option>
+                <option value="複数曲げ">複数曲げ</option>
+              </select>
+              <span id="bend-count-wrap" style="display:none; margin-left:10px;">曲げ回数 <select id="bend-count" style="width:58px; font-size:11px;">
+                <option value="1">1回</option><option value="2">2回</option><option value="3">3回</option><option value="4" selected>4回</option><option value="5">5回</option><option value="6">6回</option><option value="7">7回</option><option value="8">8回</option>
+              </select></span>
+            </div>
+            <div class="row"><label>数量</label><input type="number" id="qty" value="1" min="1" step="1"><span class="unit">個</span></div>
+            <div class="row"><label>重量</label><input type="number" id="weight" value="" min="0" step="0.1" placeholder="kg"><span class="unit">kg</span></div>
+            <div class="row"><label>曲げ長さ</label><select id="length-source" style="width:52px;font-size:11px;margin-right:4px;"><option value="W">横W</option><option value="L">縦L</option></select><input type="number" id="length" value="" min="0" step="1" placeholder="mm"><span class="unit">mm</span></div>
+          </div>
+          <div class="opts">
+            <span class="opt-ttl">オプション</span>
+            <label><input type="checkbox" id="opt-use-qty-factor" checked> 数量係数を反映する</label>
+            <label><input type="checkbox" id="opt-nakagoshi"> 中押し×<input type="number" id="opt-nakagoshi-factor" value="1.5" min="0" step="0.1" style="width:48px;" class="no-spin"></label>
+            <label><input type="checkbox" id="opt-reverse"> 逆曲げ×<input type="number" id="opt-reverse-factor" value="1.2" min="0" step="0.1" style="width:48px;" class="no-spin"></label>
+            <label><input type="checkbox" id="opt-long-meoshi"> 長尺目押し+<input type="number" id="opt-long-meoshi-add" value="2500" min="0" step="1" style="width:56px;" class="no-spin">円</label>
+            <label><input type="checkbox" id="opt-fukabori"> 深曲げ+<input type="number" id="opt-fukabori-add" value="3000" min="0" step="1" style="width:56px;" class="no-spin">円</label>
+          </div>
+        </div>
+        <div class="ref-section">
+          <div class="card">
+            <h2>選択中の形状：<span id="ref-shape-name">—</span><span id="ref-bend-count-note" style="font-size:11px;color:#555;font-weight:normal;"></span></h2>
+            <p class="note">重量(kg) × 長さ区分 の基準価格表。<strong>セルをクリックして数値を直接編集できます</strong>（変更は即座に計算に反映・このブラウザに保存）。</p>
+            <div class="card-body">
+              <table class="ref-table" id="ref-price-table">
+                <thead><tr><th class="text-left">重量(kg)</th><th>〜500mm</th><th>〜835mm</th><th>〜1670mm</th><th>〜2505mm</th><th>〜3048mm</th><th>3048mm超</th></tr></thead>
+                <tbody id="ref-price-body"></tbody>
+              </table>
+              <div class="ref-qty" id="ref-qty-note" style="margin-top:8px;">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+                  <span style="font-size:12px;font-weight:600;color:#333;">数量係数（編集可）：</span>
+                  <button type="button" class="mem-btn" id="mem-btn-qf" style="margin-left:0;" title="数量係数を記憶。F2リセットを押しても復元されます。緑＝記憶中">★ 記憶</button>
+                </div>
+                <table style="margin-top:0;border-collapse:collapse;font-size:12px;">
+                  <thead><tr>
+                    <th style="background:#D9E1F2;padding:3px 8px;border:1px solid #ccc;text-align:center;">個数</th>
+                    <th style="background:#D9E1F2;padding:3px 8px;border:1px solid #ccc;text-align:center;">係数</th>
+                  </tr></thead>
+                  <tbody>
+                    <tr>
+                      <td style="padding:3px 8px;border:1px solid #ccc;">1 〜 <input type="number" id="qf-thresh1" value="4" min="1" max="999" step="1" style="width:45px;font-size:12px;padding:1px 3px;text-align:right;"> 個</td>
+                      <td style="padding:3px 8px;border:1px solid #ccc;">× <input type="number" id="qf-factor1" value="1.5" min="0" step="0.01" style="width:55px;font-size:12px;padding:1px 3px;text-align:right;"></td>
+                    </tr>
+                    <tr>
+                      <td style="padding:3px 8px;border:1px solid #ccc;"><span id="qf-from2">5</span> 〜 <input type="number" id="qf-thresh2" value="19" min="1" max="999" step="1" style="width:45px;font-size:12px;padding:1px 3px;text-align:right;"> 個</td>
+                      <td style="padding:3px 8px;border:1px solid #ccc;">× <input type="number" id="qf-factor2" value="1.0" min="0" step="0.01" style="width:55px;font-size:12px;padding:1px 3px;text-align:right;"></td>
+                    </tr>
+                    <tr>
+                      <td style="padding:3px 8px;border:1px solid #ccc;"><span id="qf-from3">20</span> 個〜</td>
+                      <td style="padding:3px 8px;border:1px solid #ccc;">× <input type="number" id="qf-factor3" value="0.8" min="0" step="0.01" style="width:55px;font-size:12px;padding:1px 3px;text-align:right;"></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <p class="note" style="margin-top:8px;">保存されている価格表データ: <button type="button" id="btn-show-storage" style="font-size:11px;padding:2px 8px;cursor:pointer;">表示する</button> <button type="button" id="btn-reset-storage" style="font-size:11px;padding:2px 8px;cursor:pointer;background:#e74c3c;color:#fff;border:none;border-radius:3px;">初期値に戻す</button></p>
+              <div id="storage-dump" style="display:none; margin-top:6px; max-height:280px; overflow:auto; border:1px solid #ddd; border-radius:4px; padding:6px; background:#fafafa;">
+                <div id="storage-dump-content"></div>
+                <p class="note" style="margin-top:6px;">localStorage キー: <code>bending-estimate-price-table</code></p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="right">
+        <div class="card h-fill">
+          <h2>曲げ工賃 内訳</h2>
+          <div class="card-body">
+            <table class="result-table">
+              <tr><th>参照価格表</th><td id="out-ref-shape" class="num">—</td></tr>
+              <tr><th>重量区分</th><td id="out-weight-band" class="num">—</td></tr>
+              <tr><th>長さ区分</th><td id="out-len-band" class="num">—</td></tr>
+              <tr id="row-table-price" style="display:none;"><th>表引き価格</th><td id="out-table-price" class="num">—</td></tr>
+              <tr id="row-bend-adj" style="display:none;"><th>曲げ回数補正</th><td id="out-bend-adj" class="num">—</td></tr>
+              <tr><th>基準価格</th><td id="out-base" class="num">—</td></tr>
+              <tr><th>数量係数</th><td id="out-qtyF" class="num">—</td></tr>
+              <tr><th>数量補正後</th><td id="out-afterQty" class="num">—</td></tr>
+              <tr><th>小物割引</th><td id="out-small" class="num">—</td></tr>
+              <tr><th>小物後（最低300円）</th><td id="out-afterSmall" class="num">—</td></tr>
+              <tr><th>中押し</th><td id="out-nakagoshi" class="num">—</td></tr>
+              <tr><th>逆曲げ</th><td id="out-reverse" class="num">—</td></tr>
+              <tr><th>長尺目押し</th><td id="out-long" class="num">—</td></tr>
+              <tr><th>深曲げ</th><td id="out-fuka" class="num">—</td></tr>
+              <tr class="total"><th>曲げ工賃 合計（税抜）</th><td id="out-total" class="num">—</td></tr>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 実績記録エリア -->
+    <div class="record-section">
+      <div class="card">
+        <p id="file-open-warning" style="display:none; margin-bottom:8px; padding:8px 10px; background:#fff3cd; border-left:4px solid #856404; border-radius:4px; font-size:12px; color:#856404;"></p>
+        <h2>実績を記録</h2>
+        <div class="record-row">
+          <label>実績価格（円）</label>
+          <input type="number" id="actual-price" placeholder="社長の回答を入力" class="no-spin">
+          <label>得意先</label>
+          <input type="text" id="customer-no" placeholder="No" style="width:56px;" class="no-spin" title="得意先No">
+          <button type="button" class="btn btn-secondary" id="customer-ref-btn">参照</button>
+          <input type="text" id="customer-name" placeholder="得意先名（クリックで検索）" readonly style="width:160px; background:#f5f5f5; cursor:pointer;" title="クリックすると得意先一覧を開き検索できます">
+          <label>伝票番号（実績時）</label>
+          <input type="text" id="slip-number" placeholder="例：NO_527065">
+          <label>メモ</label>
+          <input type="text" id="record-memo" placeholder="例：小物だから、急ぎだから">
+        </div>
+        <div class="record-actions">
+          <button class="btn btn-primary" id="save-record-btn">記録する</button>
+          <button class="btn btn-secondary" id="toggle-records-btn">実績一覧を見る</button>
+          <button class="btn btn-secondary" id="csv-download-btn">CSVでダウンロード</button>
+          <input type="file" id="customer-csv-file" accept=".csv" style="display:none;">
+          <button class="btn btn-secondary" id="customer-csv-import-btn">得意先CSV読み込み</button>
+          <span class="record-msg" id="record-msg" style="display:none;"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 得意先一覧モーダル -->
+    <div class="customer-modal-overlay" id="customer-modal-overlay">
+      <div class="customer-modal">
+        <h3>得意先一覧</h3>
+        <div class="customer-modal-search">
+          <label for="customer-search">検索文字列（得意先No・得意先名で部分一致）</label>
+          <input type="text" id="customer-search" placeholder="検索文字列を入力してください">
+        </div>
+        <div class="customer-modal-list">
+          <table class="customer-modal-table">
+            <thead><tr><th class="num">得意先No</th><th>得意先名</th></tr></thead>
+            <tbody id="customer-modal-body"></tbody>
+          </table>
+        </div>
+        <div class="customer-modal-actions">
+          <label class="btn btn-secondary" style="margin:0; cursor:pointer;">CSVを読み込む<input type="file" id="customer-csv-input" accept=".csv" style="display:none;"></label>
+          <button type="button" class="btn btn-secondary" id="customer-modal-cancel">キャンセル</button>
+          <button type="button" class="btn btn-primary" id="customer-modal-ok">OK</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 実績一覧 -->
+    <div class="record-list-section" id="record-list-section" style="display:none;">
+      <div class="card">
+        <p class="note" id="record-share-notice" style="display:none; margin-bottom:6px; padding:6px 8px; background:#fff3cd; border-radius:4px; font-size:11px;"></p>
+        <h2>実績一覧 <span id="record-count" style="font-size:10px;color:#555;font-weight:normal;"></span></h2>
+        <div style="overflow:auto; max-height:300px;">
+          <table class="record-list-table">
+            <thead>
+              <tr>
+                <th>日時</th>
+                <th>形状</th>
+                <th>曲げ回数</th>
+                <th>寸法</th>
+                <th>数量</th>
+                <th>オプション</th>
+                <th>計算値</th>
+                <th>実績値</th>
+                <th>差額</th>
+                <th>お客様名</th>
+                <th>伝票番号</th>
+                <th>メモ</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="record-list-body"></tbody>
+          </table>
+        </div>
+        <p class="note" id="record-empty-msg" style="display:none; padding:8px 0;">まだ実績がありません</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="customers.js"></script>
+  <script>
+  function $(id){ return document.getElementById(id); }
+  function fmt(n){ return typeof n==='number'&&!isNaN(n) ? Math.round(n).toLocaleString() : '—'; }
+
+  var CUSTOMER_LIST_CSV_KEY = 'bending-customer-list-csv';
+
+  /** 初回から登録済みの得意先（CSV未読み込み・file:// 時もこの一覧が出る） */
+  var DEFAULT_CUSTOMER_LIST = [ ['1', '松井鋼業'], ['2', '宮澤商事'] ];
+  /** fetch 失敗時用の得意先CSV（data/得意先.csv と同内容） */
+  var FALLBACK_CUSTOMER_CSV = '得意先No,得意先名\n243,建成工業\n081,安斎工業\n006,旭鋼商\n017,阿部商会\n040,荒巻工業\n041,荒井鉄工所\n046,朝日金網工業\n047,青山工業\n028,猪股鉄工建設\n029,伊藤鉄鋼\n036,泉田鉄工所\n037,石原商事\n038,飯田鉄工\n042,岩原製作所\n043,伊藤製作所\n048,茜工業\n049,市川建設\n118,大石鋼業\n099,岡本鉄工\n102,真栄\n107,オートサービス高橋\n111,大関商店\n112,小沢商店\n114,小川鉄工所\n115,小野製作所\n116,大串鉄工所\n117,オーヤギ\n121,亀田工業\n135,金山構業\n167,キクチ工業\n169,菊地鉄工所\n193,久保工業\n242,ケンニ鉄工\n245,キザイ工業\n265,小久保工業所\n266,江南興業所\n268,小池工業所\n576,幸和工業\n304,三栄商会\n320,サトースチール\n317,三栄工業\n318,斉藤鋼材店\n324,佐野電機工業所\n329,サヤカ工業\n330,蔵王工業\n469,プロ匠栄房\n373,鈴木工業\n376,鈴木三五郎商店\n377,杉本製作所\n378,日鉄住金物産鉄建関東\n440,大栄鋼材\n455,高橋鉄工\n457,立沢製作所\n458,知生工業\n459,谷川電機製作所\n050,赤川鉄工\n138,カゴイ\n141,カネタ金属\n386,鈴木商店\n439,千代田技工\n383,関口鉄工\n384,芝浦鋼材\n051,アーチ\n441,エムエム建材販売\n078,入船鋼材\n079,沖山製作所\n052,美造\n119,小野建\n448,竹内建設\n465,大誠産業\n466,大成工業\n467,角彦\n473,同和製作所\n474,東京計測\n475,トーネジ\n476,竹原工業\n478,高美鉄工所\n481,中里鉄工所\n482,那須鉄工\n486,西村鉄工\n509,野火止製作所\n510,熱理\n487,中山製作所\n489,中道鉄工所\n490,中澤鉄工所\n530,早船工業\n536,ハセケン\n537,英工業\n538,広田工機\n553,藤村工業\n571,星野製作所\n572,伸鉄工\n573,橋口鉄工所\n541,翔建\n584,松井鋼業\n585,茂木機械製作所\n586,丸藤興業\n577,松田鋼業（所沢工場等）\n588,松田鋼業（武蔵営業所）\n591,宮川鉄工\n595,宮澤商事\n600,松川鉄工所\n617,松井鉄工所\n587,戸田テクノ\n624,山形鉄工\n631,山正住建\n632,吉田工業\n637,油機工業\n639,菱和鉄工\n649,渡辺鉄工\n653,和光機材\n640,矢田部鉄工所\n661,渡辺メタル\n491,日進商事\n601,メイドインビー\n602,マツイ\n434,阿久津亮\n636,山崎建築工房\n581,真光\n385,祥衛工業\n462,千田鉄工所\n388,芝田工業所\n542,阪和興業\n700,キクチ製作所\n716,天使廊\n267,興那鋼管商会\n080,英電\n709,ケンコー\n736,玉津抜型\n642,安田興産\n604,明星工業\n635,ヨシケン（新座・川越）\n641,ヨシケン（本社・戸田）\n575,NS建材販売（株）入間支店\n999,現金客\n737,暁架台\n738,須田電気商会\n739,正栄建材\n740,川岸工業\n741,佐藤興業\n742,スペーステック\n743,made in bee\n744,仲澤鉄工所\n745,タドコロ\n746,京和\n436,トーワ技研\n747,志賀建装\n748,アクティ\n749,笠原製作所\n750,小林ユニオン\n751,カノークス\n136,カモガワ工業\n165,木元鉄工\n752,BAD LAND\n753,みきデザイン工房\n305,佐藤鉄工\n120,小河製作所\n539,平井スチール\n387,佐藤商事\n710,紅光\n354,シルバーポート\n643,吉野鉄工所\n605,ミツワ商工\n461,巽製作所\n449,東光商事\n754,トッピアート\n625,山本溶接\n082,アクト\n106,(株)荻野鉄工\n389,関根鉄工所\n390,篠製作所\n391,鈴木金物\n392,相互技研\n083,アールユーテクノ\n170,清工場\n084,梅本製作所\n755,シンリュウ\n756,城西鉄工所\n007,朝霞製作所\n085,榎本溶接工業所\n558,パールシャープ\n098,岡崎鉄工所\n447,ティエスアート\n394,富士オートメーション\n442,高橋鉄工所　新座\n555,普代産業\n543,阪和工材\n446,田島鉄工\n647,山幸\n003,アーク\n545,溝上鉄工\n444,高橋鉄工所　練馬\n443,高橋鉄工所（内間木）\n090,ラステック\n086,RUテクノ\n008,会津電設\n998,高橋鉄骨\n275,幸榮設備\n100,アプリュス今井\n396,三機製作所\n532,ホソダファーネス\n760,オクダ鋼管\n276,後藤製作所\n761,埼玉鉄工\n027,岩丸鋼管\n762,柳金属\n763,吉田土木\n997,今井みのり\n477,東武防災建設\n535,本間鋼業\n142,かつきワークショップ\n606,メタルＹ\n130,オーツーカプセルボックス\n437,トウタイ\n460,東洋建鉄\n032,岩田建設\n143,川越山伸マテリアル\n308,サトー鋼材\n033,今井製作所\n547,FALCON(ファルコン)\n483,希美工業\n451,ティーズワークス\n570,NS建材販売（株）厚木支店\n004,暁溶接工業\n337,信工業\n590,モトキ製作所\n485,日酸TANAKA\n356,ジャパンエレベータパーツ\n705,大川\n010,アイヨンテック\n035,石川ガスケット宇都宮\n039,石川ガスケット清原\n097,オーエスメタル\n607,三川鉄工所\n246,KHシンケン\n319,斉藤工業\n277,小林鉄工所\n313,佐藤鉄管継手\n995,Ｆ・ヒロタキ\n729,松宮工材\n044,荒川工業\n488,中村';
+
+  /** CSV文字列を解析して [ [No, 名前], ... ] を返す。ヘッダーは 得意先No,得意先名 または 客先 に対応 */
+  function parseCustomerCSV(csvText){
+    var lines = (csvText || '').split(/\r?\n/).filter(function(l){ return l.trim(); });
+    if(lines.length < 2) return [];
+    var header = lines[0].split(',').map(function(s){ return (s || '').trim().replace(/^\uFEFF/, ''); });
+    var colNo = -1, colName = -1, colKyaku = -1;
+    for(var h = 0; h < header.length; h++){
+      if(/得意先No|No/i.test(header[h])) colNo = h;
+      else if(/得意先名|名前|名称/i.test(header[h])) colName = h;
+      else if(/客先/i.test(header[h])) colKyaku = h;
+    }
+    if(colName < 0 && colKyaku >= 0) colName = colKyaku;
+    var list = [];
+    for(var i = 1; i < lines.length; i++){
+      var row = lines[i].split(',').map(function(s){ return (s || '').trim(); });
+      var no = (colNo >= 0 && row[colNo]) ? row[colNo] : String(i);
+      var name = (colName >= 0 && row[colName]) ? row[colName] : (colKyaku >= 0 ? row[colKyaku] : '');
+      if(name) list.push([no, name]);
+    }
+    return list;
+  }
+
+  /** 得意先一覧＝CSVで読み込んだ一覧（localStorage）→ なければ customers.js → 実績から出た分を重複なく追加 */
+  function getCustomerList(){
+    var list = [];
+    var seen = {};
+    function add(no, name){
+      var key = (no || '') + '\t' + (name || '');
+      if(seen[key]) return;
+      seen[key] = true;
+      list.push([String(no || ''), String(name || '')]);
+    }
+    try {
+      var csvStored = localStorage.getItem(CUSTOMER_LIST_CSV_KEY);
+      if(csvStored){
+        var fromCsv = JSON.parse(csvStored);
+        if(Array.isArray(fromCsv)) for(var i = 0; i < fromCsv.length; i++){ var x = fromCsv[i]; add(x[0], x[1]); }
+      }
+      if(list.length === 0 && typeof FALLBACK_CUSTOMER_CSV !== 'undefined'){
+        var fallback = parseCustomerCSV(FALLBACK_CUSTOMER_CSV);
+        for(var f = 0; f < fallback.length; f++){ var x = fallback[f]; add(x[0], x[1]); }
+      }
+      if(list.length === 0 && DEFAULT_CUSTOMER_LIST && DEFAULT_CUSTOMER_LIST.length){
+        for(var d = 0; d < DEFAULT_CUSTOMER_LIST.length; d++){ var x = DEFAULT_CUSTOMER_LIST[d]; add(x[0], x[1]); }
+      }
+    } catch(e){}
+    if(list.length === 0 && typeof window.BENDING_CUSTOMER_LIST !== 'undefined' && Array.isArray(window.BENDING_CUSTOMER_LIST)){
+      for(var i = 0; i < window.BENDING_CUSTOMER_LIST.length; i++){
+        var c = window.BENDING_CUSTOMER_LIST[i];
+        var no = (c && (c[0] != null ? c[0] : c.no)) != null ? String(c[0] != null ? c[0] : c.no) : '';
+        var name = (c && (c[1] != null ? c[1] : c.name)) != null ? String(c[1] != null ? c[1] : c.name) : '';
+        add(no, name);
+      }
+    }
+    try {
+      var raw = localStorage.getItem('bending-estimate-records');
+      var records = raw ? JSON.parse(raw) : [];
+      for(var j = 0; j < records.length; j++){
+        var r = records[j];
+        var rNo = (r && r.customerCode != null) ? String(r.customerCode).trim() : '';
+        var rName = (r && r.customerName != null) ? String(r.customerName).trim() : '';
+        if(rNo || rName) add(rNo, rName);
+      }
+    } catch(e){}
+    list.sort(function(a, b){ return (a[1] || '').localeCompare(b[1] || '', 'ja'); });
+    return list;
+  }
+  var customerModalSelected = null;
+
+  /** 検索用に正規化（空白除去・小文字・全角→半角・カタカナ→ひらがな） */
+  function normalizeForSearch(s){
+    if(typeof s !== 'string') return '';
+    var t = s.replace(/\s/g, '');
+    var r = '';
+    for(var i = 0; i < t.length; i++){
+      var c = t.charCodeAt(i);
+      if(c >= 0xFF01 && c <= 0xFF5E){ /* 全角英数記号 → 半角 */
+        r += String.fromCharCode(c - 0xFEE0);
+      } else if(c >= 0xFF10 && c <= 0xFF19){ /* 全角数字 ０-９ */
+        r += String.fromCharCode(c - 0xFEE0);
+      } else if(c >= 0x30A1 && c <= 0x30F6){ /* カタカナ → ひらがな */
+        r += String.fromCharCode(c - 0x60);
+      } else {
+        r += t.charAt(i);
+      }
+    }
+    return r.toLowerCase();
+  }
+  /** 検索キーから「№」「No.」「&」「得意先No」などを除く（得意先No検索用） */
+  function stripSearchKeywordPrefix(s){
+    if(typeof s !== 'string') return s;
+    return s.replace(/^[\s\uFF04\u2116&№Ｎｏｎｏ.]*/i, '').replace(/^得意先\s*[Nn]o\.?\s*/i, '').replace(/^\s+/, '');
+  }
+  function getCustomerNo(c){ return (c && (c[0] != null ? c[0] : c.no)) != null ? String(c[0] != null ? c[0] : c.no) : ''; }
+  function getCustomerName(c){ return (c && (c[1] != null ? c[1] : c.name)) != null ? String(c[1] != null ? c[1] : c.name) : ''; }
+  function filterCustomerList(keyword){
+    var list = getCustomerList();
+    var raw = stripSearchKeywordPrefix(keyword);
+    var k = normalizeForSearch(raw);
+    if(!k) return list.slice(0);
+    return list.filter(function(c){
+      var no = getCustomerNo(c);
+      var name = getCustomerName(c);
+      var noNorm = normalizeForSearch(no);
+      var nameNorm = normalizeForSearch(name);
+      if(noNorm.indexOf(k) >= 0 || nameNorm.indexOf(k) >= 0) return true;
+      if(/^\d+$/.test(k) && no.replace(/^0+/, '') === k.replace(/^0+/, '')) return true;
+      return false;
+    });
+  }
+  function renderCustomerModalTable(list){
+    var body = $('customer-modal-body');
+    if(!body) return;
+    body.innerHTML = '';
+    if(list.length === 0){
+      var tr = document.createElement('tr');
+      tr.innerHTML = '<td colspan="2" style="padding:12px;color:#888;text-align:center;">' +
+        '該当する得意先がありません。検索文字列を変えるか、customers.js に得意先を追加するか、実績を記録すると一覧に表示されます。</td>';
+      body.appendChild(tr);
+      return;
+    }
+    for(var i = 0; i < list.length; i++){
+      var c = list[i];
+      var no = getCustomerNo(c);
+      var name = getCustomerName(c);
+      var tr = document.createElement('tr');
+      tr.setAttribute('data-no', no);
+      tr.setAttribute('data-name', name);
+      tr.innerHTML = '<td class="num">' + no + '</td><td>' + name + '</td>';
+      tr.addEventListener('click', function(){
+        var t = this;
+        var rows = body.querySelectorAll('tr.selected');
+        for(var j = 0; j < rows.length; j++) rows[j].classList.remove('selected');
+        t.classList.add('selected');
+        customerModalSelected = { no: t.getAttribute('data-no'), name: t.getAttribute('data-name') };
+      });
+      tr.addEventListener('dblclick', function(){
+        customerModalSelected = { no: this.getAttribute('data-no'), name: this.getAttribute('data-name') };
+        applyCustomerSelection();
+      });
+      body.appendChild(tr);
+    }
+  }
+  function openCustomerModal(focusSearch){
+    customerModalSelected = null;
+    var overlay = $('customer-modal-overlay');
+    var searchInput = $('customer-search');
+    if(!overlay || !searchInput) return;
+    searchInput.value = '';
+    renderCustomerModalTable(getCustomerList());
+    overlay.classList.add('show');
+    if(focusSearch) setTimeout(function(){ searchInput.focus(); }, 50);
+  }
+  function closeCustomerModal(){
+    var overlay = $('customer-modal-overlay');
+    if(overlay) overlay.classList.remove('show');
+  }
+  function applyCustomerSelection(){
+    if(!customerModalSelected) return;
+    var noEl = $('customer-no');
+    var nameEl = $('customer-name');
+    if(noEl) noEl.value = customerModalSelected.no || '';
+    if(nameEl) nameEl.value = customerModalSelected.name || '';
+    closeCustomerModal();
+  }
+
+  /** 得意先Noから得意先名を取得（先頭ゼロ無視で照合）。見つからなければ null */
+  function getCustomerNameByNo(noStr){
+    if(noStr == null || String(noStr).trim() === '') return null;
+    var key = String(noStr).trim().replace(/^0+/, '') || '0';
+    var list = getCustomerList();
+    for(var i = 0; i < list.length; i++){
+      var c = list[i];
+      var no = getCustomerNo(c);
+      var noNorm = (no || '').replace(/^0+/, '') || '0';
+      if(noNorm === key) return getCustomerName(c);
+    }
+    if(key !== String(noStr).trim()) return null;
+    for(var j = 0; j < list.length; j++){
+      var n = getCustomerNo(list[j]);
+      if((n || '').trim() === (noStr || '').trim()) return getCustomerName(list[j]);
+    }
+    return null;
+  }
+
+  var LENGTH_THRESHOLDS = [500, 835, 1670, 2505, 3048, 99999];
+  var BENDING_TABLE = [
+    /* No.1 L曲げ — 列:[〜500,〜835,〜1670,〜2505,〜3048,3048超] */
+    {shape:'L曲げ',w:10,  c:[500,  500,  800,  1000, 1300, 2000]},
+    {shape:'L曲げ',w:20,  c:[800,  800,  1000, 1300, 1500, 2500]},
+    {shape:'L曲げ',w:30,  c:[1000, 1000, 1200, 1500, 1800, 3000]},
+    {shape:'L曲げ',w:50,  c:[1500, 1500, 2000, 2500, 3000, 4000]},
+    {shape:'L曲げ',w:80,  c:[2000, 2000, 2500, 3000, 3500, 5000]},
+    {shape:'L曲げ',w:100, c:[2500, 2500, 3000, 4000, 5000, 6000]},
+    {shape:'L曲げ',w:150, c:[4000, 4000, 5000, 6000, 7000, 8000]},
+    {shape:'L曲げ',w:9999,c:[5000, 5000, 7000, 8000, 9000, 10000]},
+    /* No.2 コの字曲げ */
+    {shape:'コの字曲げ',w:10,  c:[800,  800,  1200, 1500, 2000, 3000]},
+    {shape:'コの字曲げ',w:20,  c:[1200, 1200, 1500, 2000, 2300, 3800]},
+    {shape:'コの字曲げ',w:30,  c:[1500, 1500, 1800, 2300, 2700, 4500]},
+    {shape:'コの字曲げ',w:50,  c:[2300, 2300, 3000, 3800, 4500, 6000]},
+    {shape:'コの字曲げ',w:80,  c:[3000, 3000, 3800, 4500, 5300, 7500]},
+    {shape:'コの字曲げ',w:100, c:[3800, 3800, 4500, 6000, 7500, 9000]},
+    {shape:'コの字曲げ',w:150, c:[6000, 6000, 7500, 9000, 10500,12000]},
+    {shape:'コの字曲げ',w:9999,c:[7500, 7500, 10500,12000,13500,15000]},
+    /* No.2 Z曲げ（コの字と同価格） */
+    {shape:'Z曲げ',w:10,  c:[800,  800,  1200, 1500, 2000, 3000]},
+    {shape:'Z曲げ',w:20,  c:[1200, 1200, 1500, 2000, 2300, 3800]},
+    {shape:'Z曲げ',w:30,  c:[1500, 1500, 1800, 2300, 2700, 4500]},
+    {shape:'Z曲げ',w:50,  c:[2300, 2300, 3000, 3800, 4500, 6000]},
+    {shape:'Z曲げ',w:80,  c:[3000, 3000, 3800, 4500, 5300, 7500]},
+    {shape:'Z曲げ',w:100, c:[3800, 3800, 4500, 6000, 7500, 9000]},
+    {shape:'Z曲げ',w:150, c:[6000, 6000, 7500, 9000, 10500,12000]},
+    {shape:'Z曲げ',w:9999,c:[7500, 7500, 10500,12000,13500,15000]},
+    /* No.3 C型曲げ */
+    {shape:'C型曲げ',w:10,  c:[1300, 1300, 2000, 2500, 3300, 5000]},
+    {shape:'C型曲げ',w:20,  c:[2000, 2000, 2500, 3300, 3800, 6300]},
+    {shape:'C型曲げ',w:30,  c:[2500, 2500, 3000, 3800, 4500, 7500]},
+    {shape:'C型曲げ',w:50,  c:[3800, 3800, 5000, 6300, 7500, 10000]},
+    {shape:'C型曲げ',w:80,  c:[5000, 5000, 6300, 7500, 8800, 12500]},
+    {shape:'C型曲げ',w:100, c:[6300, 6300, 7500, 10000,12500,15000]},
+    {shape:'C型曲げ',w:150, c:[10000,10000,12500,15000,17500,20000]},
+    {shape:'C型曲げ',w:9999,c:[12500,12500,17500,20000,22500,25000]},
+    /* No.3 ハット曲げ（C型と同価格） */
+    {shape:'ハット曲げ',w:10,  c:[1300, 1300, 2000, 2500, 3300, 5000]},
+    {shape:'ハット曲げ',w:20,  c:[2000, 2000, 2500, 3300, 3800, 6300]},
+    {shape:'ハット曲げ',w:30,  c:[2500, 2500, 3000, 3800, 4500, 7500]},
+    {shape:'ハット曲げ',w:50,  c:[3800, 3800, 5000, 6300, 7500, 10000]},
+    {shape:'ハット曲げ',w:80,  c:[5000, 5000, 6300, 7500, 8800, 12500]},
+    {shape:'ハット曲げ',w:100, c:[6300, 6300, 7500, 10000,12500,15000]},
+    {shape:'ハット曲げ',w:150, c:[10000,10000,12500,15000,17500,20000]},
+    {shape:'ハット曲げ',w:9999,c:[12500,12500,17500,20000,22500,25000]},
+    /* No.4 三方曲げ（独自価格。従来は C型にマッピングしていたが分離） */
+    {shape:'三方曲げ',w:10,  c:[1500, 1500, 2400, 3000, 3900, 6000]},
+    {shape:'三方曲げ',w:20,  c:[2400, 2400, 3000, 3900, 4500, 7500]},
+    {shape:'三方曲げ',w:30,  c:[3000, 3000, 3600, 4500, 5400, 9000]},
+    {shape:'三方曲げ',w:50,  c:[4500, 4500, 6000, 7500, 9000, 12000]},
+    {shape:'三方曲げ',w:80,  c:[6000, 6000, 7500, 9000, 10500,15000]},
+    {shape:'三方曲げ',w:100, c:[7500, 7500, 9000, 12000,15000,18000]},
+    {shape:'三方曲げ',w:150, c:[12000,12000,15000,18000,21000,24000]},
+    {shape:'三方曲げ',w:9999,c:[15000,15000,21000,24000,27000,30000]},
+    /* No.5 四方曲げ（独自価格。従来は C型にマッピングしていたが分離） */
+    {shape:'四方曲げ',w:10,  c:[2000, 2000, 3200, 4000, 5200, 8000]},
+    {shape:'四方曲げ',w:20,  c:[3200, 3200, 4000, 5200, 6000, 10000]},
+    {shape:'四方曲げ',w:30,  c:[4000, 4000, 4800, 6000, 7200, 12000]},
+    {shape:'四方曲げ',w:50,  c:[6000, 6000, 8000, 10000,12000,16000]},
+    {shape:'四方曲げ',w:80,  c:[8000, 8000, 10000,12000,14000,20000]},
+    {shape:'四方曲げ',w:100, c:[10000,10000,12000,16000,20000,24000]},
+    {shape:'四方曲げ',w:150, c:[16000,16000,20000,24000,28000,32000]},
+    {shape:'四方曲げ',w:9999,c:[20000,20000,28000,32000,36000,40000]}
+  ];
+  function cloneTable(tbl){ return tbl.map(function(r){ return { shape: r.shape, w: r.w, c: r.c.slice(0) }; }); }
+  var BENDING_STORAGE_KEY = 'bending-estimate-price-table';
+  function loadBendingTable(){
+    try{
+      var raw = localStorage.getItem(BENDING_STORAGE_KEY);
+      if(!raw) return null;
+      var arr = JSON.parse(raw);
+      if(!Array.isArray(arr) || arr.length !== BENDING_TABLE.length) return null;
+      var nCols = LENGTH_THRESHOLDS.length;
+      for(var i=0;i<arr.length;i++){
+        if(!arr[i] || arr[i].shape!==BENDING_TABLE[i].shape || arr[i].w!==BENDING_TABLE[i].w || !Array.isArray(arr[i].c) || arr[i].c.length!==nCols) return null;
+      }
+      return arr;
+    }catch(e){ return null; }
+  }
+  function saveBendingTable(){
+    try{ localStorage.setItem(BENDING_STORAGE_KEY, JSON.stringify(currentBendingTable)); }catch(e){}
+  }
+  var currentBendingTable = (function(){
+    var loaded = loadBendingTable();
+    return loaded ? loaded : cloneTable(BENDING_TABLE);
+  })();
+  // 形状ごとの曲げ回数（価格表の「何回曲げの単価か」の参照用。複数曲げはユーザー入力）
+  var SHAPE_BEND_COUNT = { 'L曲げ':1, 'Z曲げ':2, 'コの字曲げ':3, 'C型曲げ':4, '三方曲げ':3, '四方曲げ':4, 'ハット曲げ':4 };
+  function shapeMap(s){ if(s==='複数曲げ')return 'C型曲げ'; return s; }
+  function getBendCountForTable(shape){ var sh = shapeMap(shape); return SHAPE_BEND_COUNT[sh] || 4; }
+  function getBase(shape, weightKg, lengthMm){
+    var sh = shapeMap(shape);
+    var rows = currentBendingTable.filter(function(r){ return r.shape===sh; }).sort(function(a,b){ return a.w-b.w; });
+    if(!rows.length) return { base: null, rowIndex: -1, colIndex: -1 };
+    var rowIndex = 0;
+    for(var i=0;i<rows.length;i++){ if(rows[i].w>=weightKg){ rowIndex=i; break; } rowIndex=i; }
+    var row = rows[rowIndex];
+    var colIndex = 0;
+    for(var j=0;j<LENGTH_THRESHOLDS.length;j++){ if(lengthMm<=LENGTH_THRESHOLDS[j]){ colIndex=j; break; } colIndex=j; }
+    return { base: row.c[colIndex], rowIndex: rowIndex, colIndex: colIndex, rowW: row.w };
+  }
+  function qtyFactor(lot){
+    var t1 = parseInt($('qf-thresh1') && $('qf-thresh1').value, 10); if(isNaN(t1)||t1<1) t1=4;
+    var t2 = parseInt($('qf-thresh2') && $('qf-thresh2').value, 10); if(isNaN(t2)||t2<1) t2=19;
+    var f1 = parseFloat($('qf-factor1') && $('qf-factor1').value); if(isNaN(f1)) f1=1.5;
+    var f2 = parseFloat($('qf-factor2') && $('qf-factor2').value); if(isNaN(f2)) f2=1.0;
+    var f3 = parseFloat($('qf-factor3') && $('qf-factor3').value); if(isNaN(f3)) f3=0.8;
+    if(lot <= t1) return f1;
+    if(lot <= t2) return f2;
+    return f3;
+  }
+  function updateQfLabels(){
+    var t1 = parseInt($('qf-thresh1') && $('qf-thresh1').value, 10); if(isNaN(t1)||t1<1) t1=4;
+    var t2 = parseInt($('qf-thresh2') && $('qf-thresh2').value, 10); if(isNaN(t2)||t2<1) t2=19;
+    if($('qf-from2')) $('qf-from2').textContent = (t1+1);
+    if($('qf-from3')) $('qf-from3').textContent = (t2+1);
+  }
+
+  function updateRefTable(usedRow, usedCol){
+    if(usedRow==null) usedRow = -1;
+    if(usedCol==null) usedCol = -1;
+    var shape = ($('shape')&&$('shape').value)||'L曲げ';
+    var sh = shapeMap(shape);
+    var rows = currentBendingTable.filter(function(r){ return r.shape===sh; }).sort(function(a,b){ return a.w-b.w; });
+    var nameEl = $('ref-shape-name');
+    var bodyEl = $('ref-price-body');
+    if(!nameEl||!bodyEl) return;
+    var noteEl = $('ref-bend-count-note');
+    if(shape === '複数曲げ'){
+      var bcEl2 = $('bend-count');
+      var bUser = Math.min(8, Math.max(1, (bcEl2 && parseInt(bcEl2.value, 10)) || 4));
+      var bRef  = getBendCountForTable('C型曲げ'); // 4回
+      nameEl.textContent = 'C型曲げ';
+      if(noteEl) noteEl.textContent = '（4回・基準表）← ' + bUser + '回指定のため ×' + bUser + '/' + bRef + ' で補正';
+    } else {
+      nameEl.textContent = shape;
+      if(noteEl){
+        if(shape && SHAPE_BEND_COUNT[shape]){
+          noteEl.textContent = '（' + SHAPE_BEND_COUNT[shape] + '回曲げ）';
+        } else {
+          noteEl.textContent = '';
+        }
+      }
+    }
+    bodyEl.innerHTML = '';
+    if(!rows.length){ bodyEl.innerHTML = '<tr><td colspan="7" class="text-left">該当する価格データがありません</td></tr>'; return; }
+    var numCols = LENGTH_THRESHOLDS.length;
+    for(var i=0;i<rows.length;i++){
+      var r = rows[i];
+      var wLabel = r.w>=9999 ? '150超' : String(r.w);
+      var tr = document.createElement('tr');
+      var td0 = document.createElement('td');
+      td0.className = 'text-left';
+      td0.textContent = wLabel;
+      tr.appendChild(td0);
+      for(var j=0;j<numCols;j++){
+        var td = document.createElement('td');
+        if(i===usedRow && j===usedCol) td.className = 'ref-used';
+        var input = document.createElement('input');
+        input.type = 'number';
+        input.min = 0;
+        input.step = 1;
+        input.value = r.c[j];
+        input.className = 'ref-input';
+        input.setAttribute('data-row', i);
+        input.setAttribute('data-col', j);
+        td.appendChild(input);
+        tr.appendChild(td);
+      }
+      bodyEl.appendChild(tr);
+    }
+  }
+  function onRefCellChange(ev){
+    var input = ev.target;
+    if(!input || !input.classList.contains('ref-input')) return;
+    var rowIdx = parseInt(input.getAttribute('data-row'), 10);
+    var colIdx = parseInt(input.getAttribute('data-col'), 10);
+    if(isNaN(rowIdx) || isNaN(colIdx) || rowIdx < 0 || colIdx < 0) return;
+    var v = parseInt(input.value, 10);
+    if(isNaN(v) || v < 0) return;
+    var shape = ($('shape')&&$('shape').value)||'L曲げ';
+    var sh = shapeMap(shape);
+    var rows = currentBendingTable.filter(function(r){ return r.shape===sh; }).sort(function(a,b){ return a.w-b.w; });
+    if(!rows[rowIdx]) return;
+    rows[rowIdx].c[colIdx] = v;
+    saveBendingTable();
+    calc();
+  }
+
+  // 手動上書きフラグ: 重量・曲げ長さを直接編集したら寸法からの自動計算を止める
+  var override = { weight: false, length: false };
+
+  // 板厚→余長の自動設定: 0.6〜2.3→50, 3.2→30, それ以外→20
+  function autoYocho(thVal){
+    if(thVal <= 0) return 20;
+    if(thVal <= 2.3) return 50;
+    if(thVal <= 3.2) return 30;
+    return 20;
+  }
+
+  function calcFromDimensions(){
+    var ta = parseFloat(($('tate')&&$('tate').value)||0)||0;
+    var yo = parseFloat(($('yoko')&&$('yoko').value)||0)||0;
+    var th = parseFloat(($('thickness')&&$('thickness').value)||0)||0;
+    var yc = parseFloat(($('yocho')&&$('yocho').value)||0)||0;
+    if(ta<=0||yo<=0||th<=0) return null;
+    var a = ta + yc, b = yo + yc;
+    var wt = Math.round(th * a * b * 7.85 / 1e6 * 100) / 100;
+    // 曲げ長さ: W/L切り替えに応じて選択（余長は含まない）
+    var src = ($('length-source')&&$('length-source').value)||'W';
+    var len = (src === 'L') ? ta : yo;
+    return { weight: wt, length: len };
+  }
+
+  function calc(){
+    var shape = ($('shape')&&$('shape').value)||'';
+    if(!shape){
+      $('out-base').textContent = '—';
+      $('out-qtyF').textContent = '—';
+      $('out-afterQty').textContent = '—';
+      $('out-small').textContent = '—';
+      $('out-afterSmall').textContent = '—';
+      $('out-nakagoshi').textContent = '—';
+      $('out-reverse').textContent = '—';
+      $('out-long').textContent = '—';
+      $('out-fuka').textContent = '—';
+      $('out-total').textContent = '—';
+      var nameEl = $('ref-shape-name'); if(nameEl) nameEl.textContent = '—';
+      var bodyEl = $('ref-price-body'); if(bodyEl) bodyEl.innerHTML = '<tr><td colspan="7" class="text-left" style="color:#888;">形状を選択してください</td></tr>';
+      return;
+    }
+    var dim = calcFromDimensions();
+    var wt, len;
+    if(dim){
+      // 自動計算値を参考表示
+      $('computed-weight').textContent = dim.weight.toFixed(2);
+      $('computed-length').textContent = Math.round(dim.length);
+      // 手動上書きされていなければ自動値をセット
+      if(!override.weight) $('weight').value = dim.weight;
+      if(!override.length) $('length').value = Math.round(dim.length);
+    } else {
+      $('computed-weight').textContent = '—';
+      $('computed-length').textContent = '—';
+    }
+    // 計算には常にフィールドの値を使う（手動上書き時はそちらが優先）
+    wt = parseFloat(($('weight')&&$('weight').value)||0)||0;
+    len = parseFloat(($('length')&&$('length').value)||0)||0;
+    var longSide = len;
+    var qtyInput = $('qty');
+    var qty = 1;
+    if(qtyInput){
+      var raw = (typeof qtyInput.value === 'string') ? qtyInput.value.trim() : String(qtyInput.value || '');
+      if(raw !== ''){ var n = parseInt(raw, 10); if(!isNaN(n) && n >= 1) qty = n; }
+    }
+
+    var LEN_LABELS = ['〜500mm','〜835mm','〜1670mm','〜2505mm','〜3048mm','3048mm超'];
+    var res = getBase(shape, wt, len);
+    if(res.base==null){
+      if($('out-ref-shape'))    $('out-ref-shape').textContent    = '—';
+      if($('out-weight-band'))  $('out-weight-band').textContent  = '—';
+      if($('out-len-band'))     $('out-len-band').textContent     = '—';
+      $('out-base').textContent = '—（形状が価格表にありません）';
+      $('out-qtyF').textContent = '—';
+      $('out-afterQty').textContent = '—';
+      $('out-small').textContent = '—';
+      $('out-afterSmall').textContent = '—';
+      $('out-nakagoshi').textContent = '—';
+      $('out-reverse').textContent = '—';
+      $('out-long').textContent = '—';
+      $('out-fuka').textContent = '—';
+      $('out-total').textContent = '—';
+      updateRefTable(-1, -1);
+      return;
+    }
+    var base = res.base;
+
+    // 根拠ラベルをセット
+    var rowWLabel  = (res.rowW >= 9999) ? '150kg超' : '〜' + res.rowW + 'kg';
+    var lenLabel   = LEN_LABELS[res.colIndex] || '—';
+    var refShapeLabel = (shape === '複数曲げ')
+      ? 'C型曲げ（4回・基準）'
+      : shape + '（' + (SHAPE_BEND_COUNT[shape] || '?') + '回）';
+    if($('out-ref-shape'))   $('out-ref-shape').textContent   = refShapeLabel;
+    if($('out-weight-band')) $('out-weight-band').textContent = wt.toFixed(2) + 'kg → ' + rowWLabel + ' の行';
+    if($('out-len-band'))    $('out-len-band').textContent    = len + 'mm → ' + lenLabel + ' の列';
+
+    // 複数曲げ時: 曲げ回数で基準価格を補正（価格表はC型＝4回曲げの単価なので、4回＝1倍…）
+    var bendCountWrap = $('bend-count-wrap');
+    if(bendCountWrap) bendCountWrap.style.display = (shape === '複数曲げ') ? '' : 'none';
+    var tablePrice = base;
+    var bendAdjText = null;
+    if(shape === '複数曲げ'){
+      var refBends = getBendCountForTable('C型曲げ'); // 複数曲げはC型表を参照 → 4回
+      var bcEl = $('bend-count');
+      var bends = (bcEl && parseInt(bcEl.value, 10)) || refBends;
+      bends = Math.min(8, Math.max(1, bends));
+      base = Math.round(base * (bends / refBends));
+      bendAdjText = fmt(tablePrice) + '円 × ' + bends + '回÷' + refBends + '回 = ' + fmt(base) + '円';
+    }
+    var rowTablePrice = $('row-table-price');
+    var rowBendAdj   = $('row-bend-adj');
+    if(rowTablePrice) rowTablePrice.style.display = bendAdjText ? '' : 'none';
+    if(rowBendAdj)   rowBendAdj.style.display   = bendAdjText ? '' : 'none';
+    if($('out-table-price')) $('out-table-price').textContent = bendAdjText ? fmt(tablePrice) + ' 円（C型' + getBendCountForTable('C型曲げ') + '回基準）' : '—';
+    if($('out-bend-adj'))    $('out-bend-adj').textContent   = bendAdjText || '—';
+
+    var useQtyFactor = ($('opt-use-qty-factor') && $('opt-use-qty-factor').checked);
+    var qtyF = useQtyFactor ? qtyFactor(qty) : 1.0;
+    var afterQty = base * qtyF;
+    var smallF = (longSide<=300 && wt<=1.0) ? 0.8 : 1.0;
+    var afterSmall = Math.max(300, Math.round(afterQty * smallF));
+    var v = afterSmall;
+
+    var optNaka = $('opt-nakagoshi')&&$('opt-nakagoshi').checked;
+    var optRev = $('opt-reverse')&&$('opt-reverse').checked;
+    var optLong = ($('opt-long-meoshi')&&$('opt-long-meoshi').checked) && (len>=1000);
+    var optFuka = $('opt-fukabori')&&$('opt-fukabori').checked;
+
+    var nakaFactor = parseFloat(($('opt-nakagoshi-factor')&&$('opt-nakagoshi-factor').value)) || 1.5;
+    var revFactor = parseFloat(($('opt-reverse-factor')&&$('opt-reverse-factor').value)) || 1.2;
+    var longAdd = parseInt(($('opt-long-meoshi-add')&&$('opt-long-meoshi-add').value),10) || 2500;
+    var fukaAdd = parseInt(($('opt-fukabori-add')&&$('opt-fukabori-add').value),10) || 3000;
+
+    var vNaka = v;
+    if(optNaka){ v = Math.round(v * nakaFactor); }
+    var vRev = v;
+    if(optRev){ v = Math.round(v * revFactor); }
+    var vLong = 0;
+    if(optLong){ vLong = longAdd; v += longAdd; }
+    var vFuka = 0;
+    if(optFuka){ vFuka = fukaAdd; v += fukaAdd; }
+
+    $('out-base').textContent = fmt(base) + ' 円';
+    $('out-qtyF').textContent = useQtyFactor ? String(qtyF) : '1（反映なし）';
+    $('out-afterQty').textContent = fmt(afterQty) + ' 円';
+    $('out-small').textContent = smallF===0.8 ? '×0.8 適用' : '適用なし';
+    $('out-afterSmall').textContent = fmt(afterSmall) + ' 円';
+    $('out-nakagoshi').textContent = optNaka ? fmt(vNaka)+'→'+fmt(Math.round(vNaka*nakaFactor))+' 円' : '—';
+    $('out-reverse').textContent = optRev ? fmt(vRev)+'→'+fmt(Math.round(vRev*revFactor))+' 円' : '—';
+    $('out-long').textContent = optLong ? '+'+(longAdd).toLocaleString()+' 円' : '—';
+    $('out-fuka').textContent = optFuka ? '+'+(fukaAdd).toLocaleString()+' 円' : '—';
+    $('out-total').textContent = fmt(v) + ' 円';
+    updateRefTable(res.rowIndex, res.colIndex);
+  }
+
+  function addListeners(){
+    // 板厚変更時: 余長を自動設定 + 手動上書きリセット
+    var thEl=$('thickness'); if(thEl){
+      thEl.addEventListener('change',function(){
+        var v=parseFloat(thEl.value)||0;
+        var yEl=$('yocho'); if(yEl) yEl.value=autoYocho(v);
+        override.weight=false; override.length=false; calc();
+      });
+    }
+    // 寸法変更時（縦L/横W/余長）は手動上書きをリセット
+    var dimIds = ['tate','yoko','yocho'];
+    for(var d=0;d<dimIds.length;d++){
+      (function(id){ var el=$(id); if(el){ el.addEventListener('input',function(){ override.weight=false; override.length=false; calc(); }); el.addEventListener('change',function(){ override.weight=false; override.length=false; calc(); }); } })(dimIds[d]);
+    }
+    // 曲げ長さソース（W/L）切り替え
+    var lsEl=$('length-source'); if(lsEl){ lsEl.addEventListener('change',function(){ override.length=false; calc(); }); }
+    // 重量・曲げ長さを直接入力したら手動上書きフラグON
+    var wtEl=$('weight'); if(wtEl){ wtEl.addEventListener('input',function(){ override.weight=true; calc(); }); wtEl.addEventListener('change',function(){ override.weight=true; calc(); }); }
+    var lnEl=$('length'); if(lnEl){ lnEl.addEventListener('input',function(){ override.length=true; calc(); }); lnEl.addEventListener('change',function(){ override.length=true; calc(); }); }
+    // その他
+    var ids = ['shape','qty','bend-count'];
+    for(var i=0;i<ids.length;i++){ var el=$(ids[i]); if(el){ el.addEventListener('input',calc); el.addEventListener('change',calc); } }
+    var opts = document.querySelectorAll('#opt-use-qty-factor,#opt-nakagoshi,#opt-reverse,#opt-long-meoshi,#opt-fukabori,#opt-nakagoshi-factor,#opt-reverse-factor,#opt-long-meoshi-add,#opt-fukabori-add');
+    for(var j=0;j<opts.length;j++){ opts[j].addEventListener('change',calc); }
+    // 数量係数テーブルの入力変更
+    ['qf-thresh1','qf-thresh2','qf-factor1','qf-factor2','qf-factor3'].forEach(function(id){
+      var el = $(id); if(!el) return;
+      el.addEventListener('input',  function(){ updateQfLabels(); calc(); });
+      el.addEventListener('change', function(){ updateQfLabels(); calc(); });
+    });
+    updateQfLabels();
+    var refBody = $('ref-price-body');
+    if(refBody) refBody.addEventListener('change', onRefCellChange);
+    function renderStorageDump(data){
+      if(!data || !Array.isArray(data)) return '<p class="note">データがありません</p>';
+      var cols = ['〜500mm','〜835mm','〜1670mm','〜2505mm','〜3048mm','3048mm超'];
+      var html = '';
+      var curShape = '';
+      for(var i = 0; i < data.length; i++){
+        var r = data[i];
+        if(r.shape !== curShape){
+          curShape = r.shape;
+          html += '<p style="font-weight:700; font-size:11px; margin:8px 0 2px; color:#2F5496;">' + curShape + '</p>';
+          html += '<table class="ref-table" style="margin-bottom:10px; font-size:10px;"><thead><tr><th class="text-left">重量(kg)</th>';
+          for(var c = 0; c < cols.length; c++) html += '<th>' + cols[c] + '</th>';
+          html += '</tr></thead><tbody>';
+        }
+        var wLabel = r.w >= 9999 ? '150超' : String(r.w);
+        html += '<tr><td class="text-left">' + wLabel + '</td>';
+        for(var j = 0; j < (r.c && r.c.length ? r.c.length : 0); j++) html += '<td>' + (r.c[j] != null ? Number(r.c[j]).toLocaleString() : '—') + '</td>';
+        html += '</tr>';
+        var next = data[i + 1];
+        if(!next || next.shape !== curShape) html += '</tbody></table>';
+      }
+      return html || '<p class="note">データがありません</p>';
+    }
+    var btnStorage = $('btn-show-storage');
+    var dumpDiv = $('storage-dump');
+    var dumpContent = $('storage-dump-content');
+    if(btnStorage && dumpDiv && dumpContent){
+      btnStorage.addEventListener('click', function(){
+        if(dumpDiv.style.display === 'none'){
+          try{
+            var raw = localStorage.getItem(BENDING_STORAGE_KEY);
+            var data = raw ? JSON.parse(raw) : currentBendingTable;
+            dumpContent.innerHTML = renderStorageDump(data);
+          }catch(e){ dumpContent.innerHTML = '<p class="note">取得エラー: ' + e.message + '</p>'; }
+          dumpDiv.style.display = 'block';
+          btnStorage.textContent = '閉じる';
+        } else {
+          dumpDiv.style.display = 'none';
+          btnStorage.textContent = '表示する';
+        }
+      });
+    }
+    var btnReset = $('btn-reset-storage');
+    if(btnReset){
+      btnReset.addEventListener('click', function(){
+        if(!confirm('価格表を初期値（HTMLの値）に戻します。手動で編集した価格はすべて消えます。よろしいですか？')) return;
+        localStorage.removeItem(BENDING_STORAGE_KEY);
+        currentBendingTable = cloneTable(BENDING_TABLE);
+        updateRefTable(-1, -1);
+        calc();
+        alert('初期値に戻しました。');
+      });
+    }
+  }
+  addListeners();
+  calc();
+
+  (function setupCustomerModal(){
+    var refBtn = $('customer-ref-btn');
+    var noEl = $('customer-no');
+    var nameEl = $('customer-name');
+    var searchInput = $('customer-search');
+    var okBtn = $('customer-modal-ok');
+    var cancelBtn = $('customer-modal-cancel');
+    var overlay = $('customer-modal-overlay');
+    if(refBtn) refBtn.addEventListener('click', function(){ openCustomerModal(false); });
+    if(nameEl) nameEl.addEventListener('click', function(){ openCustomerModal(true); });
+    if(noEl){
+      function syncNameFromNo(){
+        var no = (noEl.value || '').trim();
+        var name = no ? getCustomerNameByNo(no) : null;
+        if(nameEl) nameEl.value = name != null ? name : '';
+      }
+      noEl.addEventListener('input', syncNameFromNo);
+      noEl.addEventListener('change', syncNameFromNo);
+    }
+    function applyCustomerSearch(){
+      renderCustomerModalTable(filterCustomerList(searchInput.value));
+    }
+    if(searchInput){
+      searchInput.addEventListener('input', applyCustomerSearch);
+      searchInput.addEventListener('compositionend', applyCustomerSearch);
+    }
+    if(searchInput) searchInput.addEventListener('keydown', function(ev){
+      if(ev.key === 'Enter') applyCustomerSelection();
+    });
+    if(okBtn) okBtn.addEventListener('click', applyCustomerSelection);
+    if(cancelBtn) cancelBtn.addEventListener('click', closeCustomerModal);
+    if(overlay) overlay.addEventListener('click', function(ev){ if(ev.target === overlay) closeCustomerModal(); });
+    var csvInput = $('customer-csv-input');
+    if(csvInput) csvInput.addEventListener('change', function(){
+      var f = this.files && this.files[0];
+      if(!f) return;
+      var reader = new FileReader();
+      reader.onload = function(){
+        var list = parseCustomerCSV(reader.result);
+        if(list.length){ localStorage.setItem(CUSTOMER_LIST_CSV_KEY, JSON.stringify(list)); renderCustomerModalTable(getCustomerList()); }
+        csvInput.value = '';
+      };
+      reader.readAsText(f, 'UTF-8');
+    });
+  })();
+
+  (function loadDefaultCustomerCSV(){
+    if(localStorage.getItem(CUSTOMER_LIST_CSV_KEY)) return;
+    fetch('data/得意先.csv').then(function(r){ return r.text(); }).then(function(t){
+      var list = parseCustomerCSV(t);
+      if(list.length) localStorage.setItem(CUSTOMER_LIST_CSV_KEY, JSON.stringify(list));
+    }).catch(function(){
+      var list = parseCustomerCSV(typeof FALLBACK_CUSTOMER_CSV !== 'undefined' ? FALLBACK_CUSTOMER_CSV : '');
+      if(list.length) localStorage.setItem(CUSTOMER_LIST_CSV_KEY, JSON.stringify(list));
+    });
+  })();
+
+  // ===== 実績記録機能 =====
+  var RECORDS_STORAGE_KEY = 'bending-estimate-records';
+  var RECORDS_CACHE = null;
+
+  function useServerRecords(){
+    var p = window.location.protocol;
+    return (p === 'http:' || p === 'https:');
+  }
+  // Google Apps Script のURL（実績データの保存先）
+  var GAS_API_URL = 'https://script.google.com/macros/s/AKfycbxgYGcNyNT1JZUYFAHT35InnAklf1In9r8-n2r0k1QTpmFtPfhPiQ-8H6t1JuWnFYShlw/exec';
+  function getRecordsApiUrl(){
+    if(!useServerRecords()) return '';
+    return GAS_API_URL;
+  }
+  function loadRecordsFromLocalStorage(){
+    try {
+      var raw = localStorage.getItem(RECORDS_STORAGE_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch(e){ return []; }
+  }
+  function loadRecords(){
+    if(RECORDS_CACHE === null) RECORDS_CACHE = loadRecordsFromLocalStorage();
+    return RECORDS_CACHE;
+  }
+  function saveRecords(records){
+    if(!Array.isArray(records)) return;
+    RECORDS_CACHE = records;
+    try { localStorage.setItem(RECORDS_STORAGE_KEY, JSON.stringify(records)); } catch(e){}
+    if(getRecordsApiUrl()){
+      fetch(getRecordsApiUrl(), { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(records) })
+        .catch(function(){});
+    }
+  }
+  function initRecordsFromServer(callback){
+    var url = getRecordsApiUrl();
+    if(!url){ RECORDS_CACHE = loadRecordsFromLocalStorage(); if(callback) callback(); return; }
+    fetch(url).then(function(r){ return r.json(); }).then(function(arr){
+      RECORDS_CACHE = Array.isArray(arr) ? arr : [];
+      if(callback) callback();
+    }).catch(function(){
+      RECORDS_CACHE = loadRecordsFromLocalStorage();
+      if(callback) callback();
+    });
+  }
+
+  function generateRecordId(){
+    var now = new Date();
+    var dateStr = now.getFullYear() +
+      String(now.getMonth()+1).padStart(2,'0') +
+      String(now.getDate()).padStart(2,'0');
+    var records = loadRecords();
+    var todayPrefix = 'rec_' + dateStr + '_';
+    var maxSeq = 0;
+    for(var i=0; i<records.length; i++){
+      if(records[i].id && records[i].id.indexOf(todayPrefix) === 0){
+        var seq = parseInt(records[i].id.substring(todayPrefix.length), 10);
+        if(seq > maxSeq) maxSeq = seq;
+      }
+    }
+    return todayPrefix + String(maxSeq + 1).padStart(3,'0');
+  }
+
+  function getCurrentCalcTotal(){
+    var totalText = $('out-total') ? $('out-total').textContent : '';
+    var num = parseInt(totalText.replace(/[^0-9]/g, ''), 10);
+    return isNaN(num) ? null : num;
+  }
+
+  function showRecordMsg(text, isError){
+    var el = $('record-msg');
+    if(!el) return;
+    el.textContent = text;
+    el.style.color = isError ? '#dc3545' : '#28a745';
+    el.style.display = 'inline';
+    el.style.opacity = '1';
+    setTimeout(function(){ el.style.opacity = '0'; setTimeout(function(){ el.style.display = 'none'; el.style.opacity = '1'; }, 500); }, 2500);
+  }
+
+  function saveRecord(){
+    var actual = parseFloat(($('actual-price') && $('actual-price').value) || '');
+    if(isNaN(actual)){
+      showRecordMsg('実績価格を入力してください', true);
+      return;
+    }
+    var calculated = getCurrentCalcTotal();
+    if(calculated === null){
+      showRecordMsg('先に見積り計算を行ってください', true);
+      return;
+    }
+    var memo = ($('record-memo') && $('record-memo').value) || '';
+    var slipNumber = ($('slip-number') && $('slip-number').value) || '';
+    var customerCode = ($('customer-no') && $('customer-no').value) || '';
+    var customerName = ($('customer-name') && $('customer-name').value) || '';
+    var thickness = parseFloat(($('thickness') && $('thickness').value) || 0) || 0;
+    var tate = parseFloat(($('tate') && $('tate').value) || 0) || 0;
+    var yoko = parseFloat(($('yoko') && $('yoko').value) || 0) || 0;
+    var yocho = parseFloat(($('yocho') && $('yocho').value) || 0) || 0;
+    var shape = ($('shape') && $('shape').value) || '';
+    var qty = parseInt(($('qty') && $('qty').value) || 1, 10) || 1;
+    var weight = parseFloat(($('weight') && $('weight').value) || 0) || 0;
+    var bendLength = parseFloat(($('length') && $('length').value) || 0) || 0;
+    var bendCount = 1;
+    if(shape === '複数曲げ'){
+      bendCount = parseInt(($('bend-count') && $('bend-count').value) || 4, 10);
+    } else if(SHAPE_BEND_COUNT[shape]){
+      bendCount = SHAPE_BEND_COUNT[shape];
+    }
+    var gap = actual - calculated;
+    var gapPercent = calculated !== 0 ? Math.round(gap / calculated * 100) : 0;
+
+    var record = {
+      id: generateRecordId(),
+      timestamp: new Date().toISOString(),
+      input: {
+        thickness: thickness,
+        lengthL: tate,
+        widthW: yoko,
+        extraLength: yocho,
+        shape: shape,
+        bendCount: bendCount,
+        quantity: qty,
+        weight: weight,
+        bendLength: bendLength,
+        options: {
+          quantityCoeff:   !!($('opt-use-qty-factor') && $('opt-use-qty-factor').checked),
+          qfThresh1:       parseInt(($('qf-thresh1') && $('qf-thresh1').value) || '4',  10),
+          qfThresh2:       parseInt(($('qf-thresh2') && $('qf-thresh2').value) || '19', 10),
+          qfFactor1:       parseFloat(($('qf-factor1') && $('qf-factor1').value) || '1.5'),
+          qfFactor2:       parseFloat(($('qf-factor2') && $('qf-factor2').value) || '1.0'),
+          qfFactor3:       parseFloat(($('qf-factor3') && $('qf-factor3').value) || '0.8'),
+          nakagoshi:       !!($('opt-nakagoshi') && $('opt-nakagoshi').checked),
+          nakagoshiFactor: parseFloat(($('opt-nakagoshi-factor') && $('opt-nakagoshi-factor').value) || '1.5'),
+          reverse:         !!($('opt-reverse') && $('opt-reverse').checked),
+          reverseFactor:   parseFloat(($('opt-reverse-factor') && $('opt-reverse-factor').value) || '1.2'),
+          longPress:       !!($('opt-long-meoshi') && $('opt-long-meoshi').checked),
+          longMeoshiAdd:   parseFloat(($('opt-long-meoshi-add') && $('opt-long-meoshi-add').value) || '2500'),
+          deep:            !!($('opt-fukabori') && $('opt-fukabori').checked),
+          fukaboriAdd:     parseFloat(($('opt-fukabori-add') && $('opt-fukabori-add').value) || '3000')
+        }
+      },
+      calculated: calculated,
+      actual: actual,
+      gap: gap,
+      gapPercent: gapPercent,
+      customerCode: customerCode,
+      customerName: customerName,
+      slipNumber: slipNumber,
+      memo: memo
+    };
+
+    function doSaveRecords(records){
+      records.push(record);
+      saveRecords(records);
+      if($('actual-price')) $('actual-price').value = '';
+      if($('customer-no')) $('customer-no').value = '';
+      if($('customer-name')) $('customer-name').value = '';
+      if($('slip-number')) $('slip-number').value = '';
+      if($('record-memo')) $('record-memo').value = '';
+      showRecordMsg('記録しました', false);
+      if($('record-list-section') && $('record-list-section').style.display !== 'none') renderRecordList();
+    }
+    if(useServerRecords() && getRecordsApiUrl()){
+      fetch(getRecordsApiUrl()).then(function(r){ return r.json(); }).then(function(arr){
+        doSaveRecords(Array.isArray(arr) ? arr : []);
+      }).catch(function(){
+        doSaveRecords(loadRecords());
+      });
+    } else {
+      doSaveRecords(loadRecords());
+    }
+  }
+
+  function formatDate(isoStr){
+    try {
+      var d = new Date(isoStr);
+      return (d.getMonth()+1) + '/' + d.getDate() + ' ' +
+        String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+    } catch(e){ return isoStr; }
+  }
+
+  function formatRecordOptions(opts){
+    if(!opts) return '—';
+    var parts = [];
+    if(opts.quantityCoeff) parts.push('数量係数');
+    if(opts.nakagoshi)  parts.push('中押し×' + (opts.nakagoshiFactor != null ? opts.nakagoshiFactor : '1.5'));
+    if(opts.reverse)    parts.push('逆曲げ×' + (opts.reverseFactor   != null ? opts.reverseFactor   : '1.2'));
+    if(opts.longPress)  parts.push('長尺+'    + (opts.longMeoshiAdd   != null ? opts.longMeoshiAdd   : '2500'));
+    if(opts.deep)       parts.push('深曲げ+'  + (opts.fukaboriAdd     != null ? opts.fukaboriAdd     : '3000'));
+    return parts.length ? parts.join(', ') : '—';
+  }
+
+  function buildQfTooltip(opts){
+    if(!opts || !opts.quantityCoeff) return '';
+    var t1 = opts.qfThresh1 != null ? opts.qfThresh1 : 4;
+    var t2 = opts.qfThresh2 != null ? opts.qfThresh2 : 19;
+    var f1 = opts.qfFactor1 != null ? opts.qfFactor1 : 1.5;
+    var f2 = opts.qfFactor2 != null ? opts.qfFactor2 : 1.0;
+    var f3 = opts.qfFactor3 != null ? opts.qfFactor3 : 0.8;
+    return '数量係数: 1〜' + t1 + '個×' + f1 + ' / ' + (t1+1) + '〜' + t2 + '個×' + f2 + ' / ' + (t2+1) + '個〜×' + f3;
+  }
+
+  function renderRecordList(){
+    var records = loadRecords();
+    var body = $('record-list-body');
+    var emptyMsg = $('record-empty-msg');
+    var countEl = $('record-count');
+    if(!body) return;
+
+    body.innerHTML = '';
+    if(records.length === 0){
+      if(emptyMsg) emptyMsg.style.display = 'block';
+      if(countEl) countEl.textContent = '';
+      return;
+    }
+    if(emptyMsg) emptyMsg.style.display = 'none';
+    if(countEl) countEl.textContent = '(' + records.length + '件)';
+
+    // 新しい順に表示
+    for(var i = records.length - 1; i >= 0; i--){
+      var r = records[i];
+      var tr = document.createElement('tr');
+      var inp = r.input || {};
+      var dims = (inp.thickness || '?') + 't ' + (inp.lengthL || '?') + '\u00d7' + (inp.widthW || '?');
+      var gapClass = r.gap > 0 ? 'gap-positive' : (r.gap < 0 ? 'gap-negative' : '');
+      var gapText = (r.gap > 0 ? '+' : '') + fmt(r.gap) + '\u5186 (' + (r.gapPercent > 0 ? '+' : '') + r.gapPercent + '%)';
+      var bendCountDisp = (inp.shape === '複数曲げ' && inp.bendCount) ? inp.bendCount + '\u56de' : '—';
+
+      var opts = inp.options || {};
+      var optText = formatRecordOptions(opts);
+      var qfTip   = buildQfTooltip(opts);
+      var optTitle = optText !== '—' ? ' title="' + (qfTip ? qfTip + '\n' : '') + optText + '"' : '';
+      tr.innerHTML =
+        '<td>' + formatDate(r.timestamp) + '</td>' +
+        '<td>' + (inp.shape || '') + '</td>' +
+        '<td class="num">' + bendCountDisp + '</td>' +
+        '<td>' + dims + '</td>' +
+        '<td class="num">' + (inp.quantity || '') + '</td>' +
+        '<td style="font-size:11px;color:#555;white-space:nowrap;"' + optTitle + '>' + optText + '</td>' +
+        '<td class="num">' + fmt(r.calculated) + '\u5186</td>' +
+        '<td class="num">' + fmt(r.actual) + '\u5186</td>' +
+        '<td class="num ' + gapClass + '">' + gapText + '</td>' +
+        '<td>' + (r.customerName != null ? r.customerName : '') + '</td>' +
+        '<td>' + (r.slipNumber != null ? r.slipNumber : '') + '</td>' +
+        '<td>' + (r.memo || '') + '</td>' +
+        '<td><button class="btn btn-danger" data-record-id="' + r.id + '">削除</button></td>';
+      body.appendChild(tr);
+    }
+  }
+
+  function deleteRecord(recordId){
+    function doDelete(records){
+      records = records.filter(function(r){ return r.id !== recordId; });
+      saveRecords(records);
+      renderRecordList();
+    }
+    if(useServerRecords() && getRecordsApiUrl()){
+      fetch(getRecordsApiUrl()).then(function(r){ return r.json(); }).then(function(arr){
+        doDelete(Array.isArray(arr) ? arr : []);
+      }).catch(function(){ doDelete(loadRecords()); });
+    } else {
+      doDelete(loadRecords());
+    }
+  }
+
+  function downloadCSV(){
+    var records = loadRecords();
+    if(records.length === 0){
+      showRecordMsg('ダウンロードするデータがありません', true);
+      return;
+    }
+    var header = ['ID','日時','板厚','縦L','横W','余長','形状','曲げ回数','数量','重量','曲げ長さ',
+      '数量係数','数量係数_閾値1','数量係数_閾値2','数量係数_F1','数量係数_F2','数量係数_F3',
+      '中押し','中押し係数','逆曲げ','逆曲げ係数','長尺目押し','長尺目押し額','深曲げ','深曲げ額',
+      '計算値','実績値','差額','差額率(%)','得意先No','得意先名','伝票番号','メモ'];
+    var rows = [header.join(',')];
+    for(var i=0; i<records.length; i++){
+      var r = records[i];
+      var inp = r.input || {};
+      var opts = inp.options || {};
+      var row = [
+        r.id,
+        r.timestamp,
+        inp.thickness,
+        inp.lengthL,
+        inp.widthW,
+        inp.extraLength,
+        '"' + (inp.shape || '') + '"',
+        inp.bendCount,
+        inp.quantity,
+        inp.weight,
+        inp.bendLength,
+        opts.quantityCoeff ? 'ON' : 'OFF',
+        opts.qfThresh1 != null ? opts.qfThresh1 : 4,
+        opts.qfThresh2 != null ? opts.qfThresh2 : 19,
+        opts.qfFactor1 != null ? opts.qfFactor1 : 1.5,
+        opts.qfFactor2 != null ? opts.qfFactor2 : 1.0,
+        opts.qfFactor3 != null ? opts.qfFactor3 : 0.8,
+        opts.nakagoshi  ? 'ON' : 'OFF',
+        opts.nakagoshiFactor != null ? opts.nakagoshiFactor : 1.5,
+        opts.reverse    ? 'ON' : 'OFF',
+        opts.reverseFactor   != null ? opts.reverseFactor   : 1.2,
+        opts.longPress  ? 'ON' : 'OFF',
+        opts.longMeoshiAdd   != null ? opts.longMeoshiAdd   : 2500,
+        opts.deep       ? 'ON' : 'OFF',
+        opts.fukaboriAdd     != null ? opts.fukaboriAdd     : 3000,
+        r.calculated,
+        r.actual,
+        r.gap,
+        r.gapPercent,
+        (r.customerCode != null ? r.customerCode : ''),
+        '"' + (r.customerName != null ? String(r.customerName).replace(/"/g, '""') : '') + '"',
+        '"' + (r.slipNumber != null ? String(r.slipNumber).replace(/"/g, '""') : '') + '"',
+        '"' + (r.memo || '') + '"'
+      ];
+      rows.push(row.join(','));
+    }
+    var bom = '\uFEFF';
+    var blob = new Blob([bom + rows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = '曲げ見積り実績_' + new Date().toISOString().slice(0,10) + '.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  // イベント登録
+  var saveBtnEl = $('save-record-btn');
+  if(saveBtnEl) saveBtnEl.addEventListener('click', saveRecord);
+
+  var toggleBtnEl = $('toggle-records-btn');
+  if(toggleBtnEl) toggleBtnEl.addEventListener('click', function(){
+    var section = $('record-list-section');
+    if(!section) return;
+    if(section.style.display === 'none'){
+      section.style.display = 'block';
+      toggleBtnEl.textContent = '実績一覧を閉じる';
+      renderRecordList();
+    } else {
+      section.style.display = 'none';
+      toggleBtnEl.textContent = '実績一覧を見る';
+    }
+  });
+
+  initRecordsFromServer(function(){
+    if($('record-list-section') && $('record-list-section').style.display !== 'none') renderRecordList();
+  });
+
+  (function setRecordShareNotice(){
+    var notice = $('record-share-notice');
+    var warn = $('file-open-warning');
+    if(useServerRecords()){
+      if(notice) notice.style.display = 'none';
+      if(warn) warn.style.display = 'none';
+      return;
+    }
+    var msg = 'このページは「フォルダから開く」状態です。実績はこのPCにしか表示・保存されず、他の人のPCでは見れません。全員で実績を共有するには、WebのURL（http:// で始まるアドレス）で開いてください。';
+    if(notice){ notice.textContent = msg; notice.style.display = 'block'; }
+    if(warn){ warn.textContent = '⚠ ' + msg; warn.style.display = 'block'; }
+  })();
+
+  var csvBtnEl = $('csv-download-btn');
+  if(csvBtnEl) csvBtnEl.addEventListener('click', downloadCSV);
+
+  // 得意先CSV読み込み
+  var customerCsvFileEl = $('customer-csv-file');
+  var customerCsvImportBtn = $('customer-csv-import-btn');
+  if(customerCsvImportBtn) customerCsvImportBtn.addEventListener('click', function(){
+    if(customerCsvFileEl) customerCsvFileEl.click();
+  });
+  if(customerCsvFileEl) customerCsvFileEl.addEventListener('change', function(){
+    var file = customerCsvFileEl.files[0];
+    if(!file) return;
+    var reader = new FileReader();
+    reader.onload = function(e){
+      var text = e.target.result;
+      var list = parseCustomerCSV(text);
+      if(list.length === 0){
+        showRecordMsg('得意先が見つかりません。ヘッダー行（得意先No,得意先名）を確認してください。', true);
+        return;
+      }
+      try {
+        localStorage.setItem(CUSTOMER_LIST_CSV_KEY, JSON.stringify(list));
+        showRecordMsg('得意先を' + list.length + '件読み込みました', false);
+      } catch(e){
+        showRecordMsg('保存に失敗しました: ' + e.message, true);
+      }
+    };
+    reader.readAsText(file, 'UTF-8');
+    customerCsvFileEl.value = '';
+  });
+
+  // 実績一覧の削除ボタン（イベント委譲）
+  var recordBody = $('record-list-body');
+  if(recordBody) recordBody.addEventListener('click', function(ev){
+    var btn = ev.target;
+    if(btn && btn.classList.contains('btn-danger') && btn.getAttribute('data-record-id')){
+      if(confirm('この記録を削除しますか？')){
+        deleteRecord(btn.getAttribute('data-record-id'));
+      }
+    }
+  });
+  // Enterキーで次の入力へ移動
+  document.addEventListener('keydown', function(ev){
+    if(ev.key !== 'Enter') return;
+    var el = ev.target;
+    var tag = el.tagName;
+    var type = (el.type || '').toLowerCase();
+    // チェックボックス・ラジオ・ボタン・テキストエリア・価格表セルは除外
+    if(type === 'checkbox' || type === 'radio' || type === 'submit' || type === 'button' || type === 'file') return;
+    if(tag === 'BUTTON' || tag === 'TEXTAREA') return;
+    if(el.classList.contains('ref-input')) return; // 価格表セルはEnterで移動しない（再描画で壊れるため）
+    // フォーカス可能な要素を順に取得
+    var focusable = Array.from(document.querySelectorAll(
+      'input:not([type=checkbox]):not([type=radio]):not([type=submit]):not([type=button]):not([type=file]):not([disabled]):not([style*="display:none"]):not([readonly]),' +
+      'select:not([disabled]):not([style*="display:none"])'
+    )).filter(function(e){
+      return e.offsetParent !== null; // 非表示要素を除外
+    });
+    var idx = focusable.indexOf(el);
+    if(idx >= 0 && idx < focusable.length - 1){
+      ev.preventDefault();
+      focusable[idx + 1].focus();
+      if(focusable[idx + 1].select) focusable[idx + 1].select();
+    }
+  });
+
+  // ショートカットバー
+  var INPUT_MEM_KEY = 'bending-estimate-input-memory';
+  var QF_MEM_KEY    = 'bending-estimate-qf-memory';
+
+  function updateMemBtnState(){
+    var hasInput = !!localStorage.getItem(INPUT_MEM_KEY);
+    var hasQf    = !!localStorage.getItem(QF_MEM_KEY);
+    var bi = $('mem-btn-input'); if(bi) bi.classList.toggle('active', hasInput);
+    var bq = $('mem-btn-qf');   if(bq) bq.classList.toggle('active', hasQf);
+  }
+
+  function saveInputMemory(){
+    var d = {
+      shape:           $('shape')            ? $('shape').value            : '',
+      qty:             $('qty')              ? $('qty').value              : '1',
+      weight:          $('weight')           ? $('weight').value           : '',
+      length:          $('length')           ? $('length').value           : '',
+      lengthSource:    $('length-source')    ? $('length-source').value    : 'W',
+      bendCount:       $('bend-count')       ? $('bend-count').value       : '4',
+      optUseQtyFactor: !!($('opt-use-qty-factor')  && $('opt-use-qty-factor').checked),
+      optNakagoshi:    !!($('opt-nakagoshi')        && $('opt-nakagoshi').checked),
+      nakagoshiFactor: $('opt-nakagoshi-factor')    ? $('opt-nakagoshi-factor').value  : '1.5',
+      optReverse:      !!($('opt-reverse')          && $('opt-reverse').checked),
+      reverseFactor:   $('opt-reverse-factor')      ? $('opt-reverse-factor').value    : '1.2',
+      optLongMeoshi:   !!($('opt-long-meoshi')      && $('opt-long-meoshi').checked),
+      longMeoshiAdd:   $('opt-long-meoshi-add')     ? $('opt-long-meoshi-add').value   : '2500',
+      optFukabori:     !!($('opt-fukabori')         && $('opt-fukabori').checked),
+      fukaboriAdd:     $('opt-fukabori-add')        ? $('opt-fukabori-add').value      : '3000'
+    };
+    try { localStorage.setItem(INPUT_MEM_KEY, JSON.stringify(d)); } catch(e){}
+    updateMemBtnState();
+  }
+
+  function saveQfMemory(){
+    var d = {
+      thresh1: $('qf-thresh1') ? $('qf-thresh1').value : '4',
+      thresh2: $('qf-thresh2') ? $('qf-thresh2').value : '19',
+      factor1: $('qf-factor1') ? $('qf-factor1').value : '1.5',
+      factor2: $('qf-factor2') ? $('qf-factor2').value : '1.0',
+      factor3: $('qf-factor3') ? $('qf-factor3').value : '0.8'
+    };
+    try { localStorage.setItem(QF_MEM_KEY, JSON.stringify(d)); } catch(e){}
+    updateMemBtnState();
+  }
+
+  function restoreInputMemory(){
+    try {
+      var raw = localStorage.getItem(INPUT_MEM_KEY);
+      if(!raw) return false;
+      var d = JSON.parse(raw);
+      if($('shape'))            $('shape').value                        = d.shape           || '';
+      if($('qty'))              $('qty').value                          = d.qty             || '1';
+      if($('weight'))           $('weight').value                       = d.weight          || '';
+      if($('length'))           $('length').value                       = d.length          || '';
+      if($('length-source'))    $('length-source').value                = d.lengthSource    || 'W';
+      if($('bend-count'))       $('bend-count').value                   = d.bendCount       || '4';
+      if($('opt-use-qty-factor')) $('opt-use-qty-factor').checked       = !!d.optUseQtyFactor;
+      if($('opt-nakagoshi'))      $('opt-nakagoshi').checked            = !!d.optNakagoshi;
+      if($('opt-nakagoshi-factor')) $('opt-nakagoshi-factor').value     = d.nakagoshiFactor || '1.5';
+      if($('opt-reverse'))        $('opt-reverse').checked              = !!d.optReverse;
+      if($('opt-reverse-factor')) $('opt-reverse-factor').value         = d.reverseFactor   || '1.2';
+      if($('opt-long-meoshi'))    $('opt-long-meoshi').checked          = !!d.optLongMeoshi;
+      if($('opt-long-meoshi-add')) $('opt-long-meoshi-add').value       = d.longMeoshiAdd   || '2500';
+      if($('opt-fukabori'))       $('opt-fukabori').checked             = !!d.optFukabori;
+      if($('opt-fukabori-add'))   $('opt-fukabori-add').value           = d.fukaboriAdd     || '3000';
+      return true;
+    } catch(e){ return false; }
+  }
+
+  function restoreQfMemory(){
+    try {
+      var raw = localStorage.getItem(QF_MEM_KEY);
+      if(!raw) return false;
+      var d = JSON.parse(raw);
+      if($('qf-thresh1')) $('qf-thresh1').value = d.thresh1;
+      if($('qf-thresh2')) $('qf-thresh2').value = d.thresh2;
+      if($('qf-factor1')) $('qf-factor1').value = d.factor1;
+      if($('qf-factor2')) $('qf-factor2').value = d.factor2;
+      if($('qf-factor3')) $('qf-factor3').value = d.factor3;
+      updateQfLabels();
+      return true;
+    } catch(e){ return false; }
+  }
+
+  function showMemMsg(btn, msg){
+    var orig = btn.textContent;
+    btn.textContent = msg;
+    setTimeout(function(){ btn.textContent = orig; }, 1200);
+  }
+
+  function doReset(){
+    // 寸法は常にクリア
+    $('thickness').value = '';
+    $('tate').value      = '';
+    $('yoko').value      = '';
+    $('yocho').value     = '';
+
+    // 入力カード：記憶があれば復元、なければデフォルト
+    if(!restoreInputMemory()){
+      if($('shape'))          $('shape').value          = '';
+      if($('qty'))            $('qty').value            = '1';
+      if($('weight'))         $('weight').value         = '';
+      if($('length'))         $('length').value         = '';
+      if($('bend-count'))     $('bend-count').value     = '4';
+      if($('opt-use-qty-factor'))  $('opt-use-qty-factor').checked  = true;
+      ['opt-nakagoshi','opt-reverse','opt-long-meoshi','opt-fukabori'].forEach(function(id){
+        var el = $(id); if(el) el.checked = false;
+      });
+      if($('opt-nakagoshi-factor'))  $('opt-nakagoshi-factor').value  = '1.5';
+      if($('opt-reverse-factor'))    $('opt-reverse-factor').value    = '1.2';
+      if($('opt-long-meoshi-add'))   $('opt-long-meoshi-add').value   = '2500';
+      if($('opt-fukabori-add'))      $('opt-fukabori-add').value      = '3000';
+    }
+
+    // 数量係数：記憶があれば復元、なければデフォルト
+    if(!restoreQfMemory()){
+      if($('qf-thresh1')) $('qf-thresh1').value = '4';
+      if($('qf-thresh2')) $('qf-thresh2').value = '19';
+      if($('qf-factor1')) $('qf-factor1').value = '1.5';
+      if($('qf-factor2')) $('qf-factor2').value = '1.0';
+      if($('qf-factor3')) $('qf-factor3').value = '0.8';
+      updateQfLabels();
+    }
+
+    // 実績入力欄もクリア
+    ['actual-price','customer-no','customer-name','slip-number','record-memo'].forEach(function(id){
+      var el = $(id); if(el) el.value = '';
+    });
+    calc();
+  }
+  function doRecord(){
+    var btn = $('save-record-btn');
+    if(btn) btn.click();
+  }
+  // 記憶ボタンのハンドラー
+  (function setupMemButtons(){
+    var bi = $('mem-btn-input');
+    var bq = $('mem-btn-qf');
+    if(bi) bi.addEventListener('click', function(){
+      saveInputMemory();
+      showMemMsg(bi, '✓ 記憶しました');
+    });
+    if(bq) bq.addEventListener('click', function(){
+      saveQfMemory();
+      showMemMsg(bq, '✓ 記憶しました');
+    });
+    // ページロード時に記憶を復元
+    var restoredInput = restoreInputMemory();
+    var restoredQf    = restoreQfMemory();
+    if(restoredInput || restoredQf) calc();
+    updateMemBtnState();
+  })();
+
+  document.addEventListener('keydown', function(ev){
+    if(ev.key === 'F1') { ev.preventDefault(); doRecord(); }
+    if(ev.key === 'F2') { ev.preventDefault(); doReset();  }
+  });
+  document.addEventListener('click', function(ev){
+    var item = ev.target.closest('.sc-item');
+    if(!item) return;
+    if(item.getAttribute('data-sc') === 'reset')  doReset();
+    if(item.getAttribute('data-sc') === 'record') doRecord();
+  });
+  </script>
+  <!-- ショートカットバー -->
+  <div class="shortcut-bar">
+    <!-- グループ1: F1〜F4 -->
+    <div class="sc-group">
+      <div class="sc-item sc-record" data-sc="record"><span class="sc-key">F1</span><span class="sc-label">記録</span></div>
+      <div class="sc-item sc-reset"  data-sc="reset" ><span class="sc-key">F2</span><span class="sc-label">リセット</span></div>
+      <div class="sc-item sc-empty"><span class="sc-key">F3</span><span class="sc-label"></span></div>
+      <div class="sc-item sc-empty"><span class="sc-key">F4</span><span class="sc-label"></span></div>
+    </div>
+    <!-- グループ2: F5〜F8 -->
+    <div class="sc-group">
+      <div class="sc-item sc-empty"><span class="sc-key">F5</span><span class="sc-label"></span></div>
+      <div class="sc-item sc-empty"><span class="sc-key">F6</span><span class="sc-label"></span></div>
+      <div class="sc-item sc-empty"><span class="sc-key">F7</span><span class="sc-label"></span></div>
+      <div class="sc-item sc-empty"><span class="sc-key">F8</span><span class="sc-label"></span></div>
+    </div>
+    <!-- グループ3: F9〜F12 -->
+    <div class="sc-group">
+      <div class="sc-item sc-empty"><span class="sc-key">F9</span><span class="sc-label"></span></div>
+      <div class="sc-item sc-empty"><span class="sc-key">F10</span><span class="sc-label"></span></div>
+      <div class="sc-item sc-empty"><span class="sc-key">F11</span><span class="sc-label"></span></div>
+      <div class="sc-item sc-empty"><span class="sc-key">F12</span><span class="sc-label"></span></div>
+    </div>
+  </div>
+</body>
+</html>
