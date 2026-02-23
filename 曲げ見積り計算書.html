@@ -82,6 +82,19 @@
     .btn-secondary:hover { background: #d0d0d0; }
     .btn-danger { background: #dc3545; color: #fff; font-size: 12px; padding: 3px 8px; }
     .btn-danger:hover { background: #c82333; }
+    .btn-edit { background: #2F5496; color: #fff; font-size: 12px; padding: 3px 8px; }
+    .btn-edit:hover { background: #1e3a6e; }
+    /* 実績編集モーダル */
+    .record-edit-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.45); z-index: 9998; justify-content: center; align-items: center; }
+    .record-edit-overlay.show { display: flex; }
+    .record-edit-modal { background: #fff; border-radius: 8px; box-shadow: 0 4px 24px rgba(0,0,0,0.22); width: 92%; max-width: 460px; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; z-index: 9999; }
+    .record-edit-modal h3 { font-size: 13px; color: #2F5496; padding: 10px 14px; border-bottom: 1px solid #D9E1F2; margin: 0; flex-shrink: 0; }
+    .record-edit-body { padding: 12px 14px; overflow-y: auto; flex: 1; }
+    .record-edit-body .er { display: flex; align-items: center; margin-bottom: 8px; gap: 8px; }
+    .record-edit-body .er label { width: 80px; font-size: 12px; color: #555; flex-shrink: 0; text-align: right; }
+    .record-edit-body .er input, .record-edit-body .er textarea { flex: 1; padding: 5px 7px; font-size: 12px; border: 1px solid #ccc; border-radius: 4px; }
+    .record-edit-body .er textarea { height: 56px; resize: vertical; }
+    .record-edit-actions { padding: 8px 14px; border-top: 1px solid #eee; display: flex; gap: 8px; justify-content: flex-end; flex-shrink: 0; }
     .record-msg { font-size: 13px; color: #28a745; font-weight: 600; margin-left: 8px; transition: opacity 0.5s; }
     .record-list-section { margin-top: 10px; }
     .record-list-table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -142,8 +155,15 @@
       <div class="left">
         <div class="card">
           <h2>寸法</h2>
+          <div class="row" style="margin-bottom:8px;">
+            <label style="width:100px;font-size:13px;font-weight:600;color:#333;flex-shrink:0;">材質</label>
+            <select id="material" style="width:110px;padding:4px 6px;font-size:13px;border:1px solid #ccc;border-radius:3px;">
+              <option value="normal">通常鋼板</option>
+              <option value="shima">CHP</option>
+            </select>
+          </div>
           <div class="grid2">
-            <div class="row"><label>板厚（鉄）</label>
+            <div class="row"><label>板厚</label>
               <select id="thickness">
                 <option value="">—</option>
                 <option value="0.5">0.5</option>
@@ -154,15 +174,20 @@
                 <option value="1.6">1.6</option>
                 <option value="2">2</option>
                 <option value="2.3">2.3</option>
+                <option value="3">3</option>
                 <option value="3.2">3.2</option>
+                <option value="4">4</option>
                 <option value="4.5">4.5</option>
+                <option value="5">5</option>
                 <option value="6">6</option>
+                <option value="8">8</option>
                 <option value="9">9</option>
+                <option value="10">10</option>
                 <option value="12">12</option>
                 <option value="16">16</option>
               </select><span class="unit">mm</span></div>
-            <div class="row"><label>縦 L</label><input type="number" id="tate" value="" min="0" step="any" placeholder="mm" class="no-spin"><span class="unit">mm</span></div>
-            <div class="row"><label>横 W</label><input type="number" id="yoko" value="" min="0" step="any" placeholder="mm" class="no-spin"><span class="unit">mm</span></div>
+            <div class="row"><label>縦</label><input type="number" id="tate" value="" min="0" step="any" placeholder="mm" class="no-spin"><span class="unit">mm</span></div>
+            <div class="row"><label>横</label><input type="number" id="yoko" value="" min="0" step="any" placeholder="mm" class="no-spin"><span class="unit">mm</span></div>
             <div class="row"><label>余長</label><input type="number" id="yocho" value="" min="0" step="0.1" placeholder="板厚で自動" class="no-spin"><span class="unit">mm</span></div>
           </div>
           <div class="computed">重量 <span id="computed-weight">—</span> kg　長さ <span id="computed-length">—</span> mm</div>
@@ -189,7 +214,7 @@
             </div>
             <div class="row"><label>数量</label><input type="number" id="qty" value="1" min="1" step="1"><span class="unit">個</span></div>
             <div class="row"><label>重量</label><input type="number" id="weight" value="" min="0" step="0.1" placeholder="kg"><span class="unit">kg</span></div>
-            <div class="row"><label>曲げ長さ</label><select id="length-source" style="width:52px;font-size:11px;margin-right:4px;"><option value="W">横W</option><option value="L">縦L</option></select><input type="number" id="length" value="" min="0" step="1" placeholder="mm"><span class="unit">mm</span></div>
+            <div class="row"><label>曲げ長さ</label><select id="length-source" style="width:66px;font-size:11px;margin-right:4px;"><option value="W">横W</option><option value="L">縦L</option></select><input type="number" id="length" value="" min="0" step="1" placeholder="mm"><span class="unit">mm</span></div>
           </div>
           <div class="opts">
             <span class="opt-ttl">オプション</span>
@@ -206,7 +231,7 @@
             <p class="note">重量(kg) × 長さ区分 の基準価格表。<strong>セルをクリックして数値を直接編集できます</strong>（変更は即座に計算に反映・このブラウザに保存）。</p>
             <div class="card-body">
               <table class="ref-table" id="ref-price-table">
-                <thead><tr><th class="text-left">重量(kg)</th><th>〜500mm</th><th>〜835mm</th><th>〜1670mm</th><th>〜2505mm</th><th>〜3048mm</th><th>3048mm超</th></tr></thead>
+                <thead><tr id="ref-price-header"><th class="text-left">重量(kg)</th><th>〜500mm</th><th>〜835mm</th><th>〜1670mm</th><th>〜2505mm</th><th>〜3048mm</th><th>3048mm超</th></tr></thead>
                 <tbody id="ref-price-body"></tbody>
               </table>
               <div class="ref-qty" id="ref-qty-note" style="margin-top:8px;">
@@ -316,6 +341,30 @@
           <label class="btn btn-secondary" style="margin:0; cursor:pointer;">CSVを読み込む<input type="file" id="customer-csv-input" accept=".csv" style="display:none;"></label>
           <button type="button" class="btn btn-secondary" id="customer-modal-cancel">キャンセル</button>
           <button type="button" class="btn btn-primary" id="customer-modal-ok">OK</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 実績編集モーダル -->
+    <div class="record-edit-overlay" id="record-edit-overlay">
+      <div class="record-edit-modal">
+        <h3>実績を編集</h3>
+        <div class="record-edit-body">
+          <div class="er"><label>日時</label><input type="datetime-local" id="edit-timestamp"></div>
+          <div class="er"><label>形状</label><input type="text" id="edit-shape"></div>
+          <div class="er"><label>板厚 (mm)</label><input type="text" id="edit-thickness"></div>
+          <div class="er"><label>縦 (mm)</label><input type="number" id="edit-length-l"></div>
+          <div class="er"><label>横 (mm)</label><input type="number" id="edit-width-w"></div>
+          <div class="er"><label>数量</label><input type="number" id="edit-quantity" min="1"></div>
+          <div class="er"><label>計算値 (円)</label><input type="number" id="edit-calculated"></div>
+          <div class="er"><label>実績値 (円)</label><input type="number" id="edit-actual"></div>
+          <div class="er"><label>お客様名</label><input type="text" id="edit-customer-name"></div>
+          <div class="er"><label>伝票番号</label><input type="text" id="edit-slip-number"></div>
+          <div class="er"><label>メモ</label><textarea id="edit-memo"></textarea></div>
+        </div>
+        <div class="record-edit-actions">
+          <button type="button" class="btn btn-secondary" id="record-edit-cancel">キャンセル</button>
+          <button type="button" class="btn btn-primary" id="record-edit-save">保存</button>
         </div>
       </div>
     </div>
@@ -616,6 +665,118 @@
     {shape:'四方曲げ',w:9999,c:[20000,20000,28000,32000,36000,40000]}
   ];
   function cloneTable(tbl){ return tbl.map(function(r){ return { shape: r.shape, w: r.w, c: r.c.slice(0) }; }); }
+
+  /* ===== しま板（チェッカープレート）データ ===== */
+  var SHIMA_UNIT_WEIGHTS = {
+    '2.3':19.73,
+    '3.2':26.79,
+    '4.5':36.99,
+    '6.0':48.77,
+    '9.0':72.32,
+    '12.0':95.87
+  };
+  var SHIMA_LENGTH_THRESHOLDS = [835, 1670, 2505, 3048, 99999];
+  var SHIMA_LENGTH_LABELS = ['〜835mm','〜1670mm','〜2505mm','〜3048mm','3048mm超'];
+  var SHIMA_SHAPE_BEND_COUNT = {
+    'L曲げ（短）':1,'L曲げ（長）':1,
+    'コ/Z（両端短）':2,'コ/Z（片側混在）':2,'コの字（長）':2,
+    'C型/ハット':4,'三方曲げ':3,'四方曲げ':4
+  };
+  var SHIMA_TABLE = [
+    /* No.1 L曲げ(短い立上り) */
+    {shape:'L曲げ（短）',w:6,   c:[500,  800,  1000, 1300, 2000]},
+    {shape:'L曲げ（短）',w:20,  c:[800,  1000, 1300, 1500, 2500]},
+    {shape:'L曲げ（短）',w:30,  c:[1000, 1200, 1500, 1800, 3000]},
+    {shape:'L曲げ（短）',w:50,  c:[1500, 2000, 2500, 3000, 4000]},
+    {shape:'L曲げ（短）',w:80,  c:[2000, 2500, 3000, 3500, 5000]},
+    {shape:'L曲げ（短）',w:100, c:[2500, 3000, 4000, 5000, 6000]},
+    {shape:'L曲げ（短）',w:150, c:[4000, 5000, 6000, 7000, 8000]},
+    {shape:'L曲げ（短）',w:9999,c:[5000, 7000, 8000, 9000, 10000]},
+    /* No.2 L曲げ(長い立上り) */
+    {shape:'L曲げ（長）',w:10,  c:[800,  1200, 1500, 2000, 3000]},
+    {shape:'L曲げ（長）',w:20,  c:[1200, 1500, 2000, 2300, 3800]},
+    {shape:'L曲げ（長）',w:30,  c:[1500, 1800, 2300, 2700, 4500]},
+    {shape:'L曲げ（長）',w:50,  c:[2300, 3000, 3800, 4500, 6000]},
+    {shape:'L曲げ（長）',w:80,  c:[3000, 3800, 4500, 5300, 7500]},
+    {shape:'L曲げ（長）',w:100, c:[3800, 4500, 6000, 7500, 9000]},
+    {shape:'L曲げ（長）',w:150, c:[6000, 7500, 9000, 10500,12000]},
+    {shape:'L曲げ（長）',w:9999,c:[7500, 10500,12000,13500,15000]},
+    /* No.3 コの字/Z（両端短い立上り） */
+    {shape:'コ/Z（両端短）',w:10,  c:[800,  1200, 1500, 2000, 3000]},
+    {shape:'コ/Z（両端短）',w:20,  c:[1200, 1500, 2000, 2300, 3800]},
+    {shape:'コ/Z（両端短）',w:30,  c:[1500, 1800, 2300, 2700, 4500]},
+    {shape:'コ/Z（両端短）',w:50,  c:[2300, 3000, 3800, 4500, 6000]},
+    {shape:'コ/Z（両端短）',w:80,  c:[3000, 3800, 4500, 5300, 7500]},
+    {shape:'コ/Z（両端短）',w:100, c:[3800, 4500, 6000, 7500, 9000]},
+    {shape:'コ/Z（両端短）',w:150, c:[6000, 7500, 9000, 10500,12000]},
+    {shape:'コ/Z（両端短）',w:9999,c:[7500, 10500,12000,13500,15000]},
+    /* No.4 コの字/Z（片側短い・片側長い立上り） */
+    {shape:'コ/Z（片側混在）',w:10,  c:[1000, 1600, 2000, 2600, 4000]},
+    {shape:'コ/Z（片側混在）',w:20,  c:[1600, 2000, 2600, 3000, 5000]},
+    {shape:'コ/Z（片側混在）',w:30,  c:[2000, 2400, 3000, 3600, 6000]},
+    {shape:'コ/Z（片側混在）',w:50,  c:[3000, 4000, 5000, 6000, 8000]},
+    {shape:'コ/Z（片側混在）',w:80,  c:[4000, 5000, 6000, 7000, 10000]},
+    {shape:'コ/Z（片側混在）',w:100, c:[5000, 6000, 8000, 10000,12000]},
+    {shape:'コ/Z（片側混在）',w:150, c:[8000, 10000,12000,14000,16000]},
+    {shape:'コ/Z（片側混在）',w:9999,c:[10000,14000,16000,18000,20000]},
+    /* No.5 コの字（長い立上り） */
+    {shape:'コの字（長）',w:10,  c:[1300, 2000, 2500, 3300, 5000]},
+    {shape:'コの字（長）',w:20,  c:[2000, 2500, 3300, 3800, 6300]},
+    {shape:'コの字（長）',w:30,  c:[2500, 3000, 3800, 4500, 7500]},
+    {shape:'コの字（長）',w:50,  c:[3800, 5000, 6300, 7500, 10000]},
+    {shape:'コの字（長）',w:80,  c:[5000, 6300, 7500, 8800, 12500]},
+    {shape:'コの字（長）',w:100, c:[6300, 7500, 10000,12500,15000]},
+    {shape:'コの字（長）',w:150, c:[10000,12500,15000,17500,20000]},
+    {shape:'コの字（長）',w:9999,c:[12500,17500,20000,22500,25000]},
+    /* No.6 C型/ハット */
+    {shape:'C型/ハット',w:10,  c:[1500, 2400, 3000, 3900, 6000]},
+    {shape:'C型/ハット',w:20,  c:[2400, 3000, 3900, 4500, 7500]},
+    {shape:'C型/ハット',w:30,  c:[3000, 3600, 4500, 5400, 9000]},
+    {shape:'C型/ハット',w:50,  c:[4500, 6000, 7500, 9000, 12000]},
+    {shape:'C型/ハット',w:80,  c:[6000, 7500, 9000, 10500,15000]},
+    {shape:'C型/ハット',w:100, c:[7500, 9000, 12000,15000,18000]},
+    {shape:'C型/ハット',w:150, c:[12000,15000,18000,21000,24000]},
+    {shape:'C型/ハット',w:9999,c:[15000,21000,24000,27000,30000]},
+    /* No.7 三方曲げ（同方向） */
+    {shape:'三方曲げ',w:10,  c:[1500, 2400, 3000, 3900, 6000]},
+    {shape:'三方曲げ',w:20,  c:[2400, 3000, 3900, 4500, 7500]},
+    {shape:'三方曲げ',w:30,  c:[3000, 3600, 4500, 5400, 9000]},
+    {shape:'三方曲げ',w:50,  c:[4500, 6000, 7500, 9000, 12000]},
+    {shape:'三方曲げ',w:80,  c:[6000, 7500, 9000, 10500,15000]},
+    {shape:'三方曲げ',w:100, c:[7500, 9000, 12000,15000,18000]},
+    {shape:'三方曲げ',w:150, c:[12000,15000,18000,21000,24000]},
+    {shape:'三方曲げ',w:9999,c:[15000,21000,24000,27000,30000]},
+    /* No.8 四方曲げ */
+    {shape:'四方曲げ',w:10,  c:[2000, 3200, 4000, 5200, 8000]},
+    {shape:'四方曲げ',w:20,  c:[3200, 4000, 5200, 6000, 10000]},
+    {shape:'四方曲げ',w:30,  c:[4000, 4800, 6000, 7200, 12000]},
+    {shape:'四方曲げ',w:50,  c:[6000, 8000, 10000,12000,16000]},
+    {shape:'四方曲げ',w:80,  c:[8000, 10000,12000,14000,20000]},
+    {shape:'四方曲げ',w:100, c:[10000,12000,16000,20000,24000]},
+    {shape:'四方曲げ',w:150, c:[16000,20000,24000,28000,32000]},
+    {shape:'四方曲げ',w:9999,c:[20000,28000,32000,36000,40000]}
+  ];
+  var SHIMA_STORAGE_KEY = 'bending-estimate-shima-price-table';
+  function loadShimaTable(){
+    try{
+      var raw = localStorage.getItem(SHIMA_STORAGE_KEY);
+      if(!raw) return null;
+      var arr = JSON.parse(raw);
+      var nCols = SHIMA_LENGTH_THRESHOLDS.length;
+      if(!Array.isArray(arr) || arr.length !== SHIMA_TABLE.length) return null;
+      for(var i=0;i<arr.length;i++){
+        if(!arr[i] || arr[i].shape!==SHIMA_TABLE[i].shape || arr[i].w!==SHIMA_TABLE[i].w || !Array.isArray(arr[i].c) || arr[i].c.length!==nCols) return null;
+      }
+      return arr;
+    }catch(e){ return null; }
+  }
+  function saveShimaTable(){
+    try{ localStorage.setItem(SHIMA_STORAGE_KEY, JSON.stringify(currentShimaTable)); }catch(e){}
+  }
+  var currentShimaTable = (function(){
+    var loaded = loadShimaTable();
+    return loaded ? loaded : cloneTable(SHIMA_TABLE);
+  })();
   var BENDING_STORAGE_KEY = 'bending-estimate-price-table';
   function loadBendingTable(){
     try{
@@ -641,7 +802,78 @@
   var SHAPE_BEND_COUNT = { 'L曲げ':1, 'Z曲げ':2, 'コの字曲げ':3, 'C型曲げ':4, '三方曲げ':3, '四方曲げ':4, 'ハット曲げ':4 };
   function shapeMap(s){ if(s==='複数曲げ')return 'C型曲げ'; return s; }
   function getBendCountForTable(shape){ var sh = shapeMap(shape); return SHAPE_BEND_COUNT[sh] || 4; }
+
+  /* ===== しま板モード切り替えヘルパー ===== */
+  function isShima(){ return ($('material') && $('material').value === 'shima'); }
+
+  var NORMAL_THICKNESS_OPTIONS = [
+    ['','—'],['0.5','0.5'],['0.6','0.6'],['0.8','0.8'],['1','1'],['1.2','1.2'],
+    ['1.6','1.6'],['2','2'],['2.3','2.3'],['3','3'],['3.2','3.2'],['4','4'],['4.5','4.5'],
+    ['5','5'],['6','6'],['8','8'],['9','9'],['10','10'],['12','12'],['16','16']
+  ];
+  var SHIMA_THICKNESS_OPTIONS = [
+    ['','—'],['2.3','2.3'],['3.2','3.2'],['4.5','4.5'],
+    ['6.0','6.0'],['9.0','9.0'],['12.0','12.0']
+  ];
+  var NORMAL_SHAPE_OPTIONS = [
+    ['','—'],['L曲げ','L曲げ'],['Z曲げ','Z曲げ'],['コの字曲げ','コの字'],
+    ['C型曲げ','C型'],['三方曲げ','三方'],['四方曲げ','四方'],
+    ['ハット曲げ','ハット'],['複数曲げ','複数曲げ']
+  ];
+  var SHIMA_SHAPE_OPTIONS = [
+    ['','—'],
+    ['L曲げ（短）','L（短い立上り）'],
+    ['L曲げ（長）','L（長い立上り）'],
+    ['コ/Z（両端短）','コ/Z（両端短い）'],
+    ['コ/Z（片側混在）','コ/Z（片側混在）'],
+    ['コの字（長）','コの字（長い立上り）'],
+    ['C型/ハット','C型/ハット'],
+    ['三方曲げ','三方曲げ'],
+    ['四方曲げ','四方曲げ']
+  ];
+
+  function updateSelectOptions(el, options){
+    if(!el) return;
+    el.innerHTML = '';
+    for(var i=0;i<options.length;i++){
+      var opt = document.createElement('option');
+      opt.value = options[i][0];
+      opt.textContent = options[i][1];
+      el.appendChild(opt);
+    }
+  }
+
+  function onMaterialChange(){
+    var shima = isShima();
+    var thEl = $('thickness');
+    var shapeEl = $('shape');
+    var prevTh = thEl ? thEl.value : '';
+    updateSelectOptions(thEl, shima ? SHIMA_THICKNESS_OPTIONS : NORMAL_THICKNESS_OPTIONS);
+    if(thEl){
+      // 同じ板厚が新モードにあれば維持、なければリセット
+      var opts = shima ? SHIMA_THICKNESS_OPTIONS : NORMAL_THICKNESS_OPTIONS;
+      var found = false;
+      for(var k=0;k<opts.length;k++){ if(opts[k][0]===prevTh){ found=true; break; } }
+      thEl.value = found ? prevTh : '';
+      var yEl = $('yocho'); if(yEl) yEl.value = autoYocho(parseFloat(thEl.value)||0);
+    }
+    updateSelectOptions(shapeEl, shima ? SHIMA_SHAPE_OPTIONS : NORMAL_SHAPE_OPTIONS);
+    override.weight = false;
+    override.length = false;
+    updateRefTable(-1, -1);
+    calc();
+  }
   function getBase(shape, weightKg, lengthMm){
+    if(isShima()){
+      var sRows = currentShimaTable.filter(function(r){ return r.shape===shape; }).sort(function(a,b){ return a.w-b.w; });
+      if(!sRows.length) return { base: null, rowIndex: -1, colIndex: -1 };
+      var sRowIdx = 0;
+      for(var si=0;si<sRows.length;si++){ if(sRows[si].w>=weightKg){ sRowIdx=si; break; } sRowIdx=si; }
+      var sRow = sRows[sRowIdx];
+      var sColIdx = 0;
+      for(var sj=0;sj<SHIMA_LENGTH_THRESHOLDS.length;sj++){ if(lengthMm<=SHIMA_LENGTH_THRESHOLDS[sj]){ sColIdx=sj; break; } sColIdx=sj; }
+      return { base: sRow.c[sColIdx], rowIndex: sRowIdx, colIndex: sColIdx, rowW: sRow.w };
+    }
     var sh = shapeMap(shape);
     var rows = currentBendingTable.filter(function(r){ return r.shape===sh; }).sort(function(a,b){ return a.w-b.w; });
     if(!rows.length) return { base: null, rowIndex: -1, colIndex: -1 };
@@ -672,14 +904,24 @@
   function updateRefTable(usedRow, usedCol){
     if(usedRow==null) usedRow = -1;
     if(usedCol==null) usedCol = -1;
-    var shape = ($('shape')&&$('shape').value)||'L曲げ';
-    var sh = shapeMap(shape);
-    var rows = currentBendingTable.filter(function(r){ return r.shape===sh; }).sort(function(a,b){ return a.w-b.w; });
+    var shima = isShima();
+    var shape = ($('shape')&&$('shape').value)||(shima ? 'L曲げ（短）' : 'L曲げ');
+    var rows = shima
+      ? currentShimaTable.filter(function(r){ return r.shape===shape; }).sort(function(a,b){ return a.w-b.w; })
+      : currentBendingTable.filter(function(r){ return r.shape===shapeMap(shape); }).sort(function(a,b){ return a.w-b.w; });
     var nameEl = $('ref-shape-name');
     var bodyEl = $('ref-price-body');
     if(!nameEl||!bodyEl) return;
     var noteEl = $('ref-bend-count-note');
-    if(shape === '複数曲げ'){
+    // ヘッダー列を更新
+    var headerEl = $('ref-price-header');
+    if(headerEl){
+      var lenLabels = shima ? SHIMA_LENGTH_LABELS : ['〜500mm','〜835mm','〜1670mm','〜2505mm','〜3048mm','3048mm超'];
+      var hHtml = '<th class="text-left">重量(kg)</th>';
+      for(var k=0;k<lenLabels.length;k++) hHtml += '<th>' + lenLabels[k] + '</th>';
+      headerEl.innerHTML = hHtml;
+    }
+    if(!shima && shape === '複数曲げ'){
       var bcEl2 = $('bend-count');
       var bUser = Math.min(8, Math.max(1, (bcEl2 && parseInt(bcEl2.value, 10)) || 4));
       var bRef  = getBendCountForTable('C型曲げ'); // 4回
@@ -688,16 +930,17 @@
     } else {
       nameEl.textContent = shape;
       if(noteEl){
-        if(shape && SHAPE_BEND_COUNT[shape]){
-          noteEl.textContent = '（' + SHAPE_BEND_COUNT[shape] + '回曲げ）';
+        var sbc = shima ? SHIMA_SHAPE_BEND_COUNT : SHAPE_BEND_COUNT;
+        if(shape && sbc[shape]){
+          noteEl.textContent = '（' + sbc[shape] + '回曲げ）';
         } else {
           noteEl.textContent = '';
         }
       }
     }
     bodyEl.innerHTML = '';
-    if(!rows.length){ bodyEl.innerHTML = '<tr><td colspan="7" class="text-left">該当する価格データがありません</td></tr>'; return; }
-    var numCols = LENGTH_THRESHOLDS.length;
+    var numCols = shima ? SHIMA_LENGTH_THRESHOLDS.length : LENGTH_THRESHOLDS.length;
+    if(!rows.length){ bodyEl.innerHTML = '<tr><td colspan="' + (numCols+1) + '" class="text-left">該当する価格データがありません</td></tr>'; return; }
     for(var i=0;i<rows.length;i++){
       var r = rows[i];
       var wLabel = r.w>=9999 ? '150超' : String(r.w);
@@ -732,11 +975,18 @@
     var v = parseInt(input.value, 10);
     if(isNaN(v) || v < 0) return;
     var shape = ($('shape')&&$('shape').value)||'L曲げ';
-    var sh = shapeMap(shape);
-    var rows = currentBendingTable.filter(function(r){ return r.shape===sh; }).sort(function(a,b){ return a.w-b.w; });
-    if(!rows[rowIdx]) return;
-    rows[rowIdx].c[colIdx] = v;
-    saveBendingTable();
+    if(isShima()){
+      var sRows = currentShimaTable.filter(function(r){ return r.shape===shape; }).sort(function(a,b){ return a.w-b.w; });
+      if(!sRows[rowIdx]) return;
+      sRows[rowIdx].c[colIdx] = v;
+      saveShimaTable();
+    } else {
+      var sh = shapeMap(shape);
+      var rows = currentBendingTable.filter(function(r){ return r.shape===sh; }).sort(function(a,b){ return a.w-b.w; });
+      if(!rows[rowIdx]) return;
+      rows[rowIdx].c[colIdx] = v;
+      saveBendingTable();
+    }
     calc();
   }
 
@@ -754,11 +1004,20 @@
   function calcFromDimensions(){
     var ta = parseFloat(($('tate')&&$('tate').value)||0)||0;
     var yo = parseFloat(($('yoko')&&$('yoko').value)||0)||0;
-    var th = parseFloat(($('thickness')&&$('thickness').value)||0)||0;
+    var thRaw = ($('thickness')&&$('thickness').value)||'';
+    var th = parseFloat(thRaw)||0;
     var yc = parseFloat(($('yocho')&&$('yocho').value)||0)||0;
     if(ta<=0||yo<=0||th<=0) return null;
     var a = ta + yc, b = yo + yc;
-    var wt = Math.round(th * a * b * 7.85 / 1e6 * 100) / 100;
+    var wt;
+    if(isShima()){
+      var unitW = SHIMA_UNIT_WEIGHTS[thRaw];
+      if(unitW == null) unitW = SHIMA_UNIT_WEIGHTS[parseFloat(thRaw).toFixed(1)];
+      if(unitW == null) return null;
+      wt = Math.round(unitW * a * b / 1e6 * 100) / 100;
+    } else {
+      wt = Math.round(th * a * b * 7.85 / 1e6 * 100) / 100;
+    }
     // 曲げ長さ: W/L切り替えに応じて選択（余長は含まない）
     var src = ($('length-source')&&$('length-source').value)||'W';
     var len = (src === 'L') ? ta : yo;
@@ -806,7 +1065,8 @@
       if(raw !== ''){ var n = parseInt(raw, 10); if(!isNaN(n) && n >= 1) qty = n; }
     }
 
-    var LEN_LABELS = ['〜500mm','〜835mm','〜1670mm','〜2505mm','〜3048mm','3048mm超'];
+    var shima = isShima();
+    var LEN_LABELS = shima ? SHIMA_LENGTH_LABELS : ['〜500mm','〜835mm','〜1670mm','〜2505mm','〜3048mm','3048mm超'];
     var res = getBase(shape, wt, len);
     if(res.base==null){
       if($('out-ref-shape'))    $('out-ref-shape').textContent    = '—';
@@ -830,19 +1090,20 @@
     // 根拠ラベルをセット
     var rowWLabel  = (res.rowW >= 9999) ? '150kg超' : '〜' + res.rowW + 'kg';
     var lenLabel   = LEN_LABELS[res.colIndex] || '—';
-    var refShapeLabel = (shape === '複数曲げ')
+    var shapeBendCount = shima ? SHIMA_SHAPE_BEND_COUNT : SHAPE_BEND_COUNT;
+    var refShapeLabel = (!shima && shape === '複数曲げ')
       ? 'C型曲げ（4回・基準）'
-      : shape + '（' + (SHAPE_BEND_COUNT[shape] || '?') + '回）';
+      : shape + '（' + (shapeBendCount[shape] || '?') + '回）';
     if($('out-ref-shape'))   $('out-ref-shape').textContent   = refShapeLabel;
     if($('out-weight-band')) $('out-weight-band').textContent = wt.toFixed(2) + 'kg → ' + rowWLabel + ' の行';
     if($('out-len-band'))    $('out-len-band').textContent    = len + 'mm → ' + lenLabel + ' の列';
 
-    // 複数曲げ時: 曲げ回数で基準価格を補正（価格表はC型＝4回曲げの単価なので、4回＝1倍…）
+    // 複数曲げ時: 曲げ回数で基準価格を補正（通常鋼板モードのみ）
     var bendCountWrap = $('bend-count-wrap');
-    if(bendCountWrap) bendCountWrap.style.display = (shape === '複数曲げ') ? '' : 'none';
+    if(bendCountWrap) bendCountWrap.style.display = (!shima && shape === '複数曲げ') ? '' : 'none';
     var tablePrice = base;
     var bendAdjText = null;
-    if(shape === '複数曲げ'){
+    if(!shima && shape === '複数曲げ'){
       var refBends = getBendCountForTable('C型曲げ'); // 複数曲げはC型表を参照 → 4回
       var bcEl = $('bend-count');
       var bends = (bcEl && parseInt(bcEl.value, 10)) || refBends;
@@ -897,6 +1158,8 @@
   }
 
   function addListeners(){
+    // 材質変更時
+    var matEl=$('material'); if(matEl){ matEl.addEventListener('change', onMaterialChange); }
     // 板厚変更時: 余長を自動設定 + 手動上書きリセット
     var thEl=$('thickness'); if(thEl){
       thEl.addEventListener('change',function(){
@@ -974,9 +1237,15 @@
     var btnReset = $('btn-reset-storage');
     if(btnReset){
       btnReset.addEventListener('click', function(){
-        if(!confirm('価格表を初期値（HTMLの値）に戻します。手動で編集した価格はすべて消えます。よろしいですか？')) return;
-        localStorage.removeItem(BENDING_STORAGE_KEY);
-        currentBendingTable = cloneTable(BENDING_TABLE);
+        var label = isShima() ? 'CHP価格表' : '通常鋼板価格表';
+        if(!confirm(label + 'を初期値（HTMLの値）に戻します。手動で編集した価格はすべて消えます。よろしいですか？')) return;
+        if(isShima()){
+          localStorage.removeItem(SHIMA_STORAGE_KEY);
+          currentShimaTable = cloneTable(SHIMA_TABLE);
+        } else {
+          localStorage.removeItem(BENDING_STORAGE_KEY);
+          currentBendingTable = cloneTable(BENDING_TABLE);
+        }
         updateRefTable(-1, -1);
         calc();
         alert('初期値に戻しました。');
@@ -1260,9 +1529,12 @@
     if(emptyMsg) emptyMsg.style.display = 'none';
     if(countEl) countEl.textContent = '(' + records.length + '件)';
 
-    // 新しい順に表示
-    for(var i = records.length - 1; i >= 0; i--){
-      var r = records[i];
+    // timestamp 降順（新しい順）に表示
+    var sorted = records.slice().sort(function(a, b){
+      return new Date(b.timestamp) - new Date(a.timestamp);
+    });
+    for(var i = 0; i < sorted.length; i++){
+      var r = sorted[i];
       var tr = document.createElement('tr');
       var inp = r.input || {};
       var dims = (inp.thickness || '?') + 't ' + (inp.lengthL || '?') + '\u00d7' + (inp.widthW || '?');
@@ -1287,7 +1559,7 @@
         '<td>' + (r.customerName != null ? r.customerName : '') + '</td>' +
         '<td>' + (r.slipNumber != null ? r.slipNumber : '') + '</td>' +
         '<td>' + (r.memo || '') + '</td>' +
-        '<td><button class="btn btn-danger" data-record-id="' + r.id + '">削除</button></td>';
+        '<td style="white-space:nowrap;"><button class="btn btn-edit" data-edit-id="' + r.id + '">編集</button> <button class="btn btn-danger" data-record-id="' + r.id + '">削除</button></td>';
       body.appendChild(tr);
     }
   }
@@ -1389,7 +1661,54 @@
     }
   });
 
+  var INITIAL_SEEDS = [
+    { id:'rec_20260218_001', timestamp:'2026-02-18T04:13:00.000Z',
+      input:{ thickness:'3.2', lengthL:158, widthW:785, extraLength:0,
+        shape:'コの字曲げ', bendCount:2, quantity:2, weight:3.12, bendLength:785,
+        options:{ quantityCoeff:false, qfThresh1:4, qfThresh2:19,
+          qfFactor1:1.5, qfFactor2:1.0, qfFactor3:0.8,
+          nakagoshi:false, nakagoshiFactor:1.5, reverse:false, reverseFactor:1.2,
+          longPress:false, longMeoshiAdd:2500, deep:false, fukaboriAdd:3000 } },
+      calculated:900, actual:900, gap:0, gapPercent:0,
+      customerCode:'', customerName:'佐藤鋼管継手', slipNumber:'534138',
+      memo:'一緒に他にもあるので数量係数反映なし' },
+    { id:'rec_20260218_002', timestamp:'2026-02-18T04:11:00.000Z',
+      input:{ thickness:'3.2', lengthL:158, widthW:290, extraLength:0,
+        shape:'コの字曲げ', bendCount:2, quantity:2, weight:1.15, bendLength:290,
+        options:{ quantityCoeff:false, qfThresh1:4, qfThresh2:19,
+          qfFactor1:1.5, qfFactor2:1.0, qfFactor3:0.8,
+          nakagoshi:false, nakagoshiFactor:1.5, reverse:false, reverseFactor:1.2,
+          longPress:false, longMeoshiAdd:2500, deep:false, fukaboriAdd:3000 } },
+      calculated:500, actual:500, gap:0, gapPercent:0,
+      customerCode:'', customerName:'佐藤鋼管継手', slipNumber:'534138',
+      memo:'一緒に他にもあるので数量係数反映なし' },
+    { id:'rec_20260218_003', timestamp:'2026-02-18T04:09:00.000Z',
+      input:{ thickness:'3.2', lengthL:158, widthW:290, extraLength:0,
+        shape:'コの字曲げ', bendCount:2, quantity:2, weight:1.15, bendLength:290,
+        options:{ quantityCoeff:false, qfThresh1:4, qfThresh2:19,
+          qfFactor1:1.5, qfFactor2:1.0, qfFactor3:0.8,
+          nakagoshi:false, nakagoshiFactor:1.5, reverse:false, reverseFactor:1.2,
+          longPress:false, longMeoshiAdd:2500, deep:false, fukaboriAdd:3000 } },
+      calculated:750, actual:500, gap:-250, gapPercent:-33,
+      customerCode:'', customerName:'佐藤鋼管継手', slipNumber:'534138',
+      memo:'一緒に他にもあるので数量係数反映なし' },
+    { id:'rec_20260218_004', timestamp:'2026-02-18T04:01:00.000Z',
+      input:{ thickness:'6', lengthL:70, widthW:370, extraLength:0,
+        shape:'ハット曲げ', bendCount:4, quantity:2, weight:1.22, bendLength:370,
+        options:{ quantityCoeff:false, qfThresh1:4, qfThresh2:19,
+          qfFactor1:1.5, qfFactor2:1.0, qfFactor3:0.8,
+          nakagoshi:false, nakagoshiFactor:1.5, reverse:false, reverseFactor:1.2,
+          longPress:false, longMeoshiAdd:2500, deep:false, fukaboriAdd:3000 } },
+      calculated:750, actual:750, gap:0, gapPercent:0,
+      customerCode:'', customerName:'興那鋼管商会', slipNumber:'527065',
+      memo:'少数の為' }
+  ];
+
   initRecordsFromServer(function(){
+    // サーバー/ローカルから読み込み後、シードIDがなければ追加してGASにも保存
+    var existingIds = (RECORDS_CACHE || []).map(function(r){ return r.id; });
+    var toAdd = INITIAL_SEEDS.filter(function(s){ return existingIds.indexOf(s.id) === -1; });
+    if(toAdd.length > 0) saveRecords((RECORDS_CACHE || []).concat(toAdd));
     if($('record-list-section') && $('record-list-section').style.display !== 'none') renderRecordList();
   });
 
@@ -1437,10 +1756,88 @@
     customerCsvFileEl.value = '';
   });
 
-  // 実績一覧の削除ボタン（イベント委譲）
+  // 実績編集モーダル
+  var editingRecordId = null;
+  function openRecordEdit(recordId){
+    var records = loadRecords();
+    var r = null;
+    for(var i = 0; i < records.length; i++){ if(records[i].id === recordId){ r = records[i]; break; } }
+    if(!r) return;
+    editingRecordId = recordId;
+    var inp = r.input || {};
+    var dt = '';
+    try {
+      var d = new Date(r.timestamp);
+      dt = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' +
+           String(d.getDate()).padStart(2,'0') + 'T' +
+           String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+    } catch(e){}
+    if($('edit-timestamp'))     $('edit-timestamp').value     = dt;
+    if($('edit-shape'))         $('edit-shape').value         = inp.shape        || '';
+    if($('edit-thickness'))     $('edit-thickness').value     = inp.thickness    || '';
+    if($('edit-length-l'))      $('edit-length-l').value      = inp.lengthL      || '';
+    if($('edit-width-w'))       $('edit-width-w').value       = inp.widthW       || '';
+    if($('edit-quantity'))      $('edit-quantity').value      = inp.quantity     || '';
+    if($('edit-calculated'))    $('edit-calculated').value    = r.calculated     != null ? r.calculated : '';
+    if($('edit-actual'))        $('edit-actual').value        = r.actual         != null ? r.actual     : '';
+    if($('edit-customer-name')) $('edit-customer-name').value = r.customerName   || '';
+    if($('edit-slip-number'))   $('edit-slip-number').value   = r.slipNumber     || '';
+    if($('edit-memo'))          $('edit-memo').value          = r.memo           || '';
+    var ov = $('record-edit-overlay');
+    if(ov) ov.classList.add('show');
+  }
+  function closeRecordEdit(){
+    var ov = $('record-edit-overlay');
+    if(ov) ov.classList.remove('show');
+    editingRecordId = null;
+  }
+  function saveRecordEdit(){
+    if(!editingRecordId) return;
+    var records = loadRecords();
+    var idx = -1;
+    for(var i = 0; i < records.length; i++){ if(records[i].id === editingRecordId){ idx = i; break; } }
+    if(idx === -1) return;
+    var r = JSON.parse(JSON.stringify(records[idx]));
+    var inp = r.input || {};
+    var tsEl = $('edit-timestamp');
+    if(tsEl && tsEl.value){ try { r.timestamp = new Date(tsEl.value).toISOString(); } catch(e){} }
+    if($('edit-shape'))     inp.shape     = $('edit-shape').value;
+    if($('edit-thickness')) inp.thickness = $('edit-thickness').value;
+    var ll = parseFloat($('edit-length-l') ? $('edit-length-l').value : '');
+    var ww = parseFloat($('edit-width-w')  ? $('edit-width-w').value  : '');
+    var qq = parseInt($('edit-quantity')   ? $('edit-quantity').value  : '', 10);
+    if(!isNaN(ll)) inp.lengthL  = ll;
+    if(!isNaN(ww)) inp.widthW   = ww;
+    if(!isNaN(qq)) inp.quantity = qq;
+    r.input = inp;
+    var calc   = parseFloat($('edit-calculated') ? $('edit-calculated').value : '');
+    var actual = parseFloat($('edit-actual')      ? $('edit-actual').value      : '');
+    if(!isNaN(calc))   r.calculated = calc;
+    if(!isNaN(actual)) r.actual     = actual;
+    r.gap        = r.actual - r.calculated;
+    r.gapPercent = r.calculated !== 0 ? Math.round(r.gap / r.calculated * 100) : 0;
+    if($('edit-customer-name')) r.customerName = $('edit-customer-name').value;
+    if($('edit-slip-number'))   r.slipNumber   = $('edit-slip-number').value;
+    if($('edit-memo'))          r.memo         = $('edit-memo').value;
+    records[idx] = r;
+    saveRecords(records);
+    closeRecordEdit();
+    renderRecordList();
+  }
+  var editSaveBtn   = $('record-edit-save');
+  var editCancelBtn = $('record-edit-cancel');
+  var editOverlay   = $('record-edit-overlay');
+  if(editSaveBtn)   editSaveBtn.addEventListener('click', saveRecordEdit);
+  if(editCancelBtn) editCancelBtn.addEventListener('click', closeRecordEdit);
+  if(editOverlay)   editOverlay.addEventListener('click', function(ev){ if(ev.target === editOverlay) closeRecordEdit(); });
+
+  // 実績一覧の削除・編集ボタン（イベント委譲）
   var recordBody = $('record-list-body');
   if(recordBody) recordBody.addEventListener('click', function(ev){
     var btn = ev.target;
+    if(btn && btn.classList.contains('btn-edit') && btn.getAttribute('data-edit-id')){
+      openRecordEdit(btn.getAttribute('data-edit-id'));
+    }
     if(btn && btn.classList.contains('btn-danger') && btn.getAttribute('data-record-id')){
       if(confirm('この記録を削除しますか？')){
         deleteRecord(btn.getAttribute('data-record-id'));
