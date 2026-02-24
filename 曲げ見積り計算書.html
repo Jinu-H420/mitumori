@@ -1546,6 +1546,9 @@
     for(var i = 0; i < sorted.length; i++){
       var r = sorted[i];
       var tr = document.createElement('tr');
+      tr.setAttribute('data-row-id', r.id);
+      tr.style.cursor = 'pointer';
+      tr.title = 'ダブルクリックで入力フォームに読み込む';
       var inp = r.input || {};
       var dims = (inp.thickness || '?') + 't ' + (inp.lengthL || '?') + '\u00d7' + (inp.widthW || '?');
       var gapClass = r.gap > 0 ? 'gap-positive' : (r.gap < 0 ? 'gap-negative' : '');
@@ -1887,8 +1890,16 @@
   if(editCancelBtn) editCancelBtn.addEventListener('click', closeRecordEdit);
   if(editOverlay)   editOverlay.addEventListener('click', function(ev){ if(ev.target === editOverlay) closeRecordEdit(); });
 
-  // 実績一覧の削除・編集ボタン（イベント委譲）
+  // 実績一覧：行をダブルクリックで入力フォームに読み込む
   var recordBody = $('record-list-body');
+  if(recordBody) recordBody.addEventListener('dblclick', function(ev){
+    var tr = ev.target.closest('tr');
+    if(tr && tr.getAttribute('data-row-id')){
+      loadRecordIntoForm(tr.getAttribute('data-row-id'));
+    }
+  });
+
+  // 実績一覧の削除・編集ボタン（イベント委譲）
   if(recordBody) recordBody.addEventListener('click', function(ev){
     var btn = ev.target;
     if(btn && btn.classList.contains('btn-load') && btn.getAttribute('data-load-id')){
