@@ -808,7 +808,7 @@
     return loaded ? loaded : cloneTable(BENDING_TABLE);
   })();
   // 形状ごとの曲げ回数（価格表の「何回曲げの単価か」の参照用。複数曲げはユーザー入力）
-  var SHAPE_BEND_COUNT = { 'L曲げ':1, 'Z曲げ':2, 'コの字曲げ':3, 'C型曲げ':4, '三方曲げ':3, '四方曲げ':4, 'ハット曲げ':4 };
+  var SHAPE_BEND_COUNT = { 'L曲げ':1, 'Z曲げ':2, 'コの字曲げ':2, 'C型曲げ':4, '三方曲げ':3, '四方曲げ':4, 'ハット曲げ':4 };
   function shapeMap(s){ if(s==='複数曲げ')return 'C型曲げ'; return s; }
   function getBendCountForTable(shape){ var sh = shapeMap(shape); return SHAPE_BEND_COUNT[sh] || 4; }
 
