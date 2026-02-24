@@ -203,6 +203,21 @@
         <div class="card">
           <h2>入力 <button type="button" class="mem-btn" id="mem-btn-input" title="形状・数量・オプションを記憶。F2リセットを押しても復元されます。緑＝記憶中">★ 記憶</button></h2>
           <p class="note" style="margin-bottom:4px;">重量・曲げ長さは寸法から自動計算。直接入力で上書きも可（寸法を変えるとリセット）。</p>
+          <div class="row" style="margin-bottom:8px;">
+            <label style="width:auto; margin-right:10px;"><input type="checkbox" id="komono-mode" style="margin-right:4px;"> 小物（金額レンジで工賃を指定）</label>
+            <span id="komono-wrap" style="display:none;">
+              <label style="width:auto; margin-right:6px;">1個あたり工賃（円）</label>
+              <select id="komono-unit-price" style="width:90px; padding:4px 6px; font-size:13px; border:1px solid #ccc; border-radius:3px;">
+                <option value="500">500</option>
+                <option value="800">800</option>
+                <option value="1000" selected>1,000</option>
+                <option value="1500">1,500</option>
+                <option value="2000">2,000</option>
+                <option value="2500">2,500</option>
+                <option value="3000">3,000</option>
+              </select>
+            </span>
+          </div>
           <div class="grid2">
             <div class="row"><label>形状</label>
               <select id="shape">
@@ -224,7 +239,7 @@
             <div class="row"><label>重量</label><input type="number" id="weight" value="" min="0" step="0.1" placeholder="kg" class="no-spin"><span class="unit">kg</span></div>
             <div class="row"><label>曲げ長さ</label><select id="length-source" style="width:66px;font-size:11px;margin-right:4px;"><option value="W">横W</option><option value="L">縦L</option></select><input type="number" id="length" value="" min="0" step="1" placeholder="mm"><span class="unit">mm</span></div>
           </div>
-          <div class="opts">
+          <div class="opts" id="opts-section">
             <span class="opt-ttl">オプション</span>
             <label><input type="checkbox" id="opt-use-qty-factor" checked> 数量係数を反映する</label>
             <label><input type="checkbox" id="opt-nakagoshi"> 中押し×<input type="number" id="opt-nakagoshi-factor" value="1.5" min="0" step="0.1" style="width:48px;" class="no-spin"></label>
@@ -1033,6 +1048,36 @@
   }
 
   function calc(){
+    var komonoMode = $('komono-mode') && $('komono-mode').checked;
+    if(komonoMode){
+      var unitPrice = parseInt(($('komono-unit-price') && $('komono-unit-price').value) || '1000', 10) || 1000;
+      var qtyInput = $('qty');
+      var qty = 1;
+      if(qtyInput){
+        var raw = (typeof qtyInput.value === 'string') ? qtyInput.value.trim() : String(qtyInput.value || '');
+        if(raw !== ''){ var n = parseInt(raw, 10); if(!isNaN(n) && n >= 1) qty = n; }
+      }
+      var afterSmall = Math.max(300, unitPrice * qty);
+      if($('out-ref-shape'))    $('out-ref-shape').textContent    = '小物（レンジ）';
+      if($('out-weight-band'))  $('out-weight-band').textContent  = '—';
+      if($('out-len-band'))     $('out-len-band').textContent     = '—';
+      if($('row-table-price'))  $('row-table-price').style.display = 'none';
+      if($('row-bend-adj'))    $('row-bend-adj').style.display   = 'none';
+      $('out-base').textContent = fmt(unitPrice) + ' 円';
+      $('out-qtyF').textContent = '1（反映なし）';
+      $('out-afterQty').textContent = fmt(unitPrice * qty) + ' 円';
+      $('out-small').textContent = '適用なし';
+      $('out-afterSmall').textContent = fmt(afterSmall) + ' 円';
+      $('out-nakagoshi').textContent = '—';
+      $('out-reverse').textContent = '—';
+      $('out-long').textContent = '—';
+      $('out-fuka').textContent = '—';
+      $('out-total').textContent = fmt(afterSmall) + ' 円';
+      var nameEl = $('ref-shape-name'); if(nameEl) nameEl.textContent = '小物（レンジ）';
+      var bodyEl = $('ref-price-body'); if(bodyEl) bodyEl.innerHTML = '<tr><td colspan="7" class="text-left" style="color:#888;">小物のため表引きは使いません。上の「1個あたり工賃」×数量で計算しています。</td></tr>';
+      return;
+    }
+
     var shape = ($('shape')&&$('shape').value)||'';
     if(!shape){
       $('out-base').textContent = '—';
@@ -1165,6 +1210,14 @@
     updateRefTable(res.rowIndex, res.colIndex);
   }
 
+  function toggleKomonoWrap(){
+    var on = ($('komono-mode') && $('komono-mode').checked);
+    var wrap = $('komono-wrap');
+    if(wrap) wrap.style.display = on ? 'inline' : 'none';
+    var opts = $('opts-section');
+    if(opts) opts.style.display = on ? 'none' : '';
+  }
+
   function addListeners(){
     // 材質変更時
     var matEl=$('material'); if(matEl){ matEl.addEventListener('change', onMaterialChange); }
@@ -1186,6 +1239,13 @@
     // 重量・曲げ長さを直接入力したら手動上書きフラグON
     var wtEl=$('weight'); if(wtEl){ wtEl.addEventListener('input',function(){ override.weight=true; calc(); }); wtEl.addEventListener('change',function(){ override.weight=true; calc(); }); }
     var lnEl=$('length'); if(lnEl){ lnEl.addEventListener('input',function(){ override.length=true; calc(); }); lnEl.addEventListener('change',function(){ override.length=true; calc(); }); }
+    // 小物モード
+    var komonoEl = $('komono-mode');
+    if(komonoEl){ komonoEl.addEventListener('change', function(){ toggleKomonoWrap(); calc(); }); }
+    var komonoPriceEl = $('komono-unit-price');
+    if(komonoPriceEl){ komonoPriceEl.addEventListener('change', calc); komonoPriceEl.addEventListener('input', calc); }
+    toggleKomonoWrap();
+
     // その他
     var ids = ['shape','qty','bend-count'];
     for(var i=0;i<ids.length;i++){ var el=$(ids[i]); if(el){ el.addEventListener('input',calc); el.addEventListener('change',calc); } }
@@ -1454,6 +1514,8 @@
         quantity: qty,
         weight: weight,
         bendLength: bendLength,
+        komonoMode: !!($('komono-mode') && $('komono-mode').checked),
+        komonoUnitPrice: ($('komono-unit-price') && $('komono-unit-price').value) || '1000',
         options: {
           quantityCoeff:   !!($('opt-use-qty-factor') && $('opt-use-qty-factor').checked),
           qfThresh1:       parseInt(($('qf-thresh1') && $('qf-thresh1').value) || '4',  10),
@@ -1572,7 +1634,7 @@
       var optTitle = optText !== '—' ? ' title="' + (qfTip ? qfTip + '\n' : '') + optText + '"' : '';
       tr.innerHTML =
         '<td>' + formatDate(r.timestamp) + '</td>' +
-        '<td>' + (inp.shape || '') + '</td>' +
+        '<td>' + (inp.komonoMode ? '小物' : (inp.shape || '')) + '</td>' +
         '<td class="num">' + bendCountDisp + '</td>' +
         '<td>' + dims + '</td>' +
         '<td class="num">' + (inp.quantity || '') + '</td>' +
@@ -1615,6 +1677,13 @@
       override.length = true;
     } else {
       override.length = false;
+    }
+
+    // 小物モード
+    if(inp.komonoMode != null){
+      if($('komono-mode')) $('komono-mode').checked = !!inp.komonoMode;
+      if($('komono-unit-price') && inp.komonoUnitPrice != null) $('komono-unit-price').value = String(inp.komonoUnitPrice);
+      if(typeof toggleKomonoWrap === 'function') toggleKomonoWrap();
     }
 
     // オプション
@@ -1672,6 +1741,12 @@
       else { override.weight = false; }
       if(inp.bendLength != null && $('length')){ $('length').value = inp.bendLength; override.length = true; }
       else { override.length = false; }
+
+      if(inp.komonoMode != null){
+        if($('komono-mode')) $('komono-mode').checked = !!inp.komonoMode;
+        if($('komono-unit-price') && inp.komonoUnitPrice != null) $('komono-unit-price').value = String(inp.komonoUnitPrice);
+        if(typeof toggleKomonoWrap === 'function') toggleKomonoWrap();
+      }
 
       if($('opt-use-qty-factor'))  $('opt-use-qty-factor').checked  = !!opts.quantityCoeff;
       if($('opt-nakagoshi'))       $('opt-nakagoshi').checked       = !!opts.nakagoshi;
@@ -2035,6 +2110,8 @@
       length:          $('length')           ? $('length').value           : '',
       lengthSource:    $('length-source')    ? $('length-source').value    : 'W',
       bendCount:       $('bend-count')       ? $('bend-count').value       : '4',
+      komonoMode:      !!($('komono-mode')         && $('komono-mode').checked),
+      komonoUnitPrice: $('komono-unit-price')      ? $('komono-unit-price').value      : '1000',
       optUseQtyFactor: !!($('opt-use-qty-factor')  && $('opt-use-qty-factor').checked),
       optNakagoshi:    !!($('opt-nakagoshi')        && $('opt-nakagoshi').checked),
       nakagoshiFactor: $('opt-nakagoshi-factor')    ? $('opt-nakagoshi-factor').value  : '1.5',
@@ -2115,6 +2192,9 @@
       if($('length'))           $('length').value                       = d.length          || '';
       if($('length-source'))    $('length-source').value                = d.lengthSource    || 'W';
       if($('bend-count'))       $('bend-count').value                   = d.bendCount       || '4';
+      if($('komono-mode'))      $('komono-mode').checked                = !!d.komonoMode;
+      if($('komono-unit-price')) $('komono-unit-price').value           = d.komonoUnitPrice || '1000';
+      if(typeof toggleKomonoWrap === 'function') toggleKomonoWrap();
       if($('opt-use-qty-factor')) $('opt-use-qty-factor').checked       = !!d.optUseQtyFactor;
       if($('opt-nakagoshi'))      $('opt-nakagoshi').checked            = !!d.optNakagoshi;
       if($('opt-nakagoshi-factor')) $('opt-nakagoshi-factor').value     = d.nakagoshiFactor || '1.5';
@@ -2154,8 +2234,8 @@
 
   function captureInputState(){
     var ids = ['thickness','tate','yoko','yocho','shape','qty','weight','length','length-source','bend-count',
-               'opt-nakagoshi-factor','opt-reverse-factor','opt-long-meoshi-add','opt-fukabori-add'];
-    var checks = ['opt-use-qty-factor','opt-nakagoshi','opt-reverse','opt-long-meoshi','opt-fukabori'];
+               'komono-unit-price','opt-nakagoshi-factor','opt-reverse-factor','opt-long-meoshi-add','opt-fukabori-add'];
+    var checks = ['opt-use-qty-factor','opt-nakagoshi','opt-reverse','opt-long-meoshi','opt-fukabori','komono-mode'];
     var s = {};
     ids.forEach(function(id){ var el=$(id); if(el) s[id]=el.value; });
     checks.forEach(function(id){ var el=$(id); if(el) s[id]=el.checked; });
@@ -2170,12 +2250,13 @@
     var s = resetUndoStack[0]; // 最初の状態に一気に戻る
     resetUndoStack = [];
     var ids = ['thickness','tate','yoko','yocho','shape','qty','weight','length','length-source','bend-count',
-               'opt-nakagoshi-factor','opt-reverse-factor','opt-long-meoshi-add','opt-fukabori-add'];
-    var checks = ['opt-use-qty-factor','opt-nakagoshi','opt-reverse','opt-long-meoshi','opt-fukabori'];
+               'komono-unit-price','opt-nakagoshi-factor','opt-reverse-factor','opt-long-meoshi-add','opt-fukabori-add'];
+    var checks = ['opt-use-qty-factor','opt-nakagoshi','opt-reverse','opt-long-meoshi','opt-fukabori','komono-mode'];
     ids.forEach(function(id){ var el=$(id); if(el&&s[id]!=null) el.value=s[id]; });
     checks.forEach(function(id){ var el=$(id); if(el&&s[id]!=null) el.checked=s[id]; });
     override.weight = !!s['_ov_weight'];
     override.length = !!s['_ov_length'];
+    if(typeof toggleKomonoWrap === 'function') toggleKomonoWrap();
     updateUndoBtn();
     calc();
   }
@@ -2224,8 +2305,11 @@
     $('yocho').value     = '';
 
     // 入力カード：常にクリア（記憶は使わない）
+    if($('komono-mode'))    $('komono-mode').checked  = false;
+    if($('komono-unit-price')) $('komono-unit-price').value = '1000';
+    if(typeof toggleKomonoWrap === 'function') toggleKomonoWrap();
     if($('shape'))          $('shape').value          = '';
-    if($('qty'))            $('qty').value            = '';
+    if($('qty'))            $('qty').value            = '1';
     if($('weight'))         $('weight').value         = '';
     if($('length'))         $('length').value         = '';
     if($('bend-count'))     $('bend-count').value     = '4';
@@ -2306,6 +2390,12 @@
     if(matEl && r.material) matEl.value = (r.material === 'CHP') ? 'shima' : 'normal';
     // 形状
     if($('shape') && r.shape) $('shape').value = r.shape;
+    // 小物モード
+    if(r.input && r.input.komonoMode != null){
+      if($('komono-mode')) $('komono-mode').checked = !!r.input.komonoMode;
+      if($('komono-unit-price') && r.input.komonoUnitPrice != null) $('komono-unit-price').value = String(r.input.komonoUnitPrice);
+      if(typeof toggleKomonoWrap === 'function') toggleKomonoWrap();
+    }
     // 縦・横（展開L/W）
     if($('tate') && r.length) $('tate').value = r.length;
     if($('yoko') && r.width)  $('yoko').value = r.width;
