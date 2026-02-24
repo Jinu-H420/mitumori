@@ -325,8 +325,7 @@
           <button class="btn btn-secondary" id="toggle-records-btn">実績一覧を見る</button>
           <button class="btn btn-secondary" id="recalc-all-btn">今の工賃で再計算</button>
           <button class="btn btn-secondary" id="csv-download-btn">CSVでダウンロード</button>
-          <input type="file" id="customer-csv-file" accept=".csv" style="display:none;">
-          <button class="btn btn-secondary" id="customer-csv-import-btn">得意先CSV読み込み</button>
+
           <span class="record-msg" id="record-msg" style="display:none;"></span>
         </div>
       </div>
@@ -1871,33 +1870,6 @@
   var csvBtnEl = $('csv-download-btn');
   if(csvBtnEl) csvBtnEl.addEventListener('click', downloadCSV);
 
-  // 得意先CSV読み込み
-  var customerCsvFileEl = $('customer-csv-file');
-  var customerCsvImportBtn = $('customer-csv-import-btn');
-  if(customerCsvImportBtn) customerCsvImportBtn.addEventListener('click', function(){
-    if(customerCsvFileEl) customerCsvFileEl.click();
-  });
-  if(customerCsvFileEl) customerCsvFileEl.addEventListener('change', function(){
-    var file = customerCsvFileEl.files[0];
-    if(!file) return;
-    var reader = new FileReader();
-    reader.onload = function(e){
-      var text = e.target.result;
-      var list = parseCustomerCSV(text);
-      if(list.length === 0){
-        showRecordMsg('得意先が見つかりません。ヘッダー行（得意先No,得意先名）を確認してください。', true);
-        return;
-      }
-      try {
-        localStorage.setItem(CUSTOMER_LIST_CSV_KEY, JSON.stringify(list));
-        showRecordMsg('得意先を' + list.length + '件読み込みました', false);
-      } catch(e){
-        showRecordMsg('保存に失敗しました: ' + e.message, true);
-      }
-    };
-    reader.readAsText(file, 'UTF-8');
-    customerCsvFileEl.value = '';
-  });
 
   // 実績編集モーダル
   var editingRecordId = null;
