@@ -1584,9 +1584,6 @@
     var inp = r.input || {};
     var opts = inp.options || {};
 
-    override.weight = false;
-    override.length = false;
-
     if($('thickness')) $('thickness').value = inp.thickness != null ? String(inp.thickness) : '';
     if($('tate'))      $('tate').value      = inp.lengthL   != null ? String(inp.lengthL)   : '';
     if($('yoko'))      $('yoko').value      = inp.widthW    != null ? String(inp.widthW)    : '';
@@ -1594,6 +1591,20 @@
     if($('shape'))     $('shape').value     = inp.shape     || '';
     if($('qty'))       $('qty').value       = inp.quantity  != null ? String(inp.quantity)  : '';
     if($('bend-count') && inp.shape === '複数曲げ') $('bend-count').value = inp.bendCount != null ? String(inp.bendCount) : '4';
+
+    // 登録時の重量・曲げ長さをそのまま使う（内訳を一致させる）
+    if(inp.weight != null && $('weight')){
+      $('weight').value = inp.weight;
+      override.weight = true;
+    } else {
+      override.weight = false;
+    }
+    if(inp.bendLength != null && $('length')){
+      $('length').value = inp.bendLength;
+      override.length = true;
+    } else {
+      override.length = false;
+    }
 
     // オプション
     if($('opt-use-qty-factor'))  $('opt-use-qty-factor').checked  = !!opts.quantityCoeff;
