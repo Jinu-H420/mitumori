@@ -207,20 +207,7 @@
           <h2>入力 <button type="button" class="mem-btn" id="mem-btn-input" title="形状・数量・オプションを記憶。F2リセットを押しても復元されます。緑＝記憶中">★ 記憶</button></h2>
           <p class="note" style="margin-bottom:4px;">重量・曲げ長さは寸法から自動計算。直接入力で上書きも可（寸法を変えるとリセット）。<strong>重量≤1kg かつ 曲げ長さ≤300mm</strong>のとき自動で小物扱いになり、曲げ回数と数量で工賃を計算します。</p>
           <div id="komono-wrap" style="display:none;">
-            <div class="row" style="margin-bottom:4px;">
-              <label style="width:100px;">曲げ回数</label>
-              <select id="komono-bend-count" style="width:90px; padding:4px 6px; font-size:13px; border:1px solid #ccc; border-radius:3px;">
-                <option value="1">1回</option>
-                <option value="2">2回</option>
-                <option value="3">3回</option>
-                <option value="4" selected>4回</option>
-                <option value="5">5回</option>
-                <option value="6">6回</option>
-                <option value="7">7回</option>
-                <option value="8">8回</option>
-              </select>
-            </div>
-            <p class="note" style="margin:0 0 6px 0;">数量は下の「数量」欄を使用。曲げ回数ごとの基準単価に数量係数（1〜4個×1.5、5〜19個×1.0、20個〜×0.8）をかけ、合計は最低300円。</p>
+            <p class="note" style="margin:0 0 6px 0;">数量は下の「数量」欄を使用。曲げ回数ごとの基準単価に数量係数（1〜4個×1.5、5〜19個×1.0、20個〜×0.8）をかけます。</p>
             <div class="row">
               <label style="width:100px;">曲げ工賃（円）</label>
               <input type="number" id="komono-total-input" min="0" step="1" placeholder="計算値（変更可）" class="no-spin" style="width:100px; padding:4px 6px; font-size:13px; border:1px solid #2F5496; border-radius:3px; background:#f0f7ff;">
@@ -243,6 +230,7 @@
               <span id="bend-count-wrap" style="display:none; margin-left:10px;">曲げ回数 <select id="bend-count" style="width:58px; font-size:11px;">
                 <option value="1">1回</option><option value="2">2回</option><option value="3">3回</option><option value="4" selected>4回</option><option value="5">5回</option><option value="6">6回</option><option value="7">7回</option><option value="8">8回</option>
               </select></span>
+              <span id="komono-bend-wrap" style="display:none; margin-left:8px; font-size:12px; color:#333;">曲げ<span id="komono-bend-text" style="margin:0 2px; font-weight:600;">—</span><select id="komono-bend-count" style="display:none; width:62px; font-size:12px; padding:2px 4px; border:1px solid #ccc; border-radius:3px;"><option value="1">1回</option><option value="2">2回</option><option value="3">3回</option><option value="4" selected>4回</option><option value="5">5回</option><option value="6">6回</option><option value="7">7回</option><option value="8">8回</option></select></span>
             </div>
             <div class="row"><label>数量</label><input type="number" id="qty" value="1" min="1" step="1"><span class="unit">個</span></div>
             <div class="row"><label>重量</label><input type="number" id="weight" value="" min="0" step="0.1" placeholder="kg" class="no-spin"><span class="unit">kg</span></div>
@@ -263,7 +251,7 @@
             <p class="note">重量(kg) × 長さ区分 の基準価格表。<strong>セルをクリックして数値を直接編集できます</strong>（変更は即座に計算に反映・このブラウザに保存）。</p>
             <div class="card-body">
               <table class="ref-table" id="ref-price-table">
-                <thead><tr id="ref-price-header"><th class="text-left">重量(kg)</th><th>〜500mm</th><th>〜835mm</th><th>〜1670mm</th><th>〜2505mm</th><th>〜3048mm</th><th>3048mm超</th></tr></thead>
+                <thead><tr id="ref-price-header"><th class="text-left">重量(kg)</th><th>〜835mm</th><th>〜1670mm</th><th>〜2505mm</th><th>〜3048mm</th><th>3048mm超</th></tr></thead>
                 <tbody id="ref-price-body"></tbody>
               </table>
               <div class="ref-qty" id="ref-qty-note" style="margin-top:8px;">
@@ -314,8 +302,6 @@
               <tr><th>基準価格</th><td id="out-base" class="num">—</td></tr>
               <tr><th>数量係数</th><td id="out-qtyF" class="num">—</td></tr>
               <tr><th>数量補正後</th><td id="out-afterQty" class="num">—</td></tr>
-              <tr><th>小物割引</th><td id="out-small" class="num">—</td></tr>
-              <tr><th>小物後（最低300円）</th><td id="out-afterSmall" class="num">—</td></tr>
               <tr><th>中押し</th><td id="out-nakagoshi" class="num">—</td></tr>
               <tr><th>逆曲げ</th><td id="out-reverse" class="num">—</td></tr>
               <tr><th>長尺目押し</th><td id="out-long" class="num">—</td></tr>
@@ -630,71 +616,71 @@
     return null;
   }
 
-  var LENGTH_THRESHOLDS = [500, 835, 1670, 2505, 3048, 99999];
+  var LENGTH_THRESHOLDS = [835, 1670, 2505, 3048, 99999];
   var BENDING_TABLE = [
-    /* No.1 L曲げ — 列:[〜500,〜835,〜1670,〜2505,〜3048,3048超] */
-    {shape:'L曲げ',w:10,  c:[500,  500,  800,  1000, 1300, 2000]},
-    {shape:'L曲げ',w:20,  c:[800,  800,  1000, 1300, 1500, 2500]},
-    {shape:'L曲げ',w:30,  c:[1000, 1000, 1200, 1500, 1800, 3000]},
-    {shape:'L曲げ',w:50,  c:[1500, 1500, 2000, 2500, 3000, 4000]},
-    {shape:'L曲げ',w:80,  c:[2000, 2000, 2500, 3000, 3500, 5000]},
-    {shape:'L曲げ',w:100, c:[2500, 2500, 3000, 4000, 5000, 6000]},
-    {shape:'L曲げ',w:150, c:[4000, 4000, 5000, 6000, 7000, 8000]},
-    {shape:'L曲げ',w:9999,c:[5000, 5000, 7000, 8000, 9000, 10000]},
+    /* No.1 L曲げ — 列:[〜835,〜1670,〜2505,〜3048,3048超] */
+    {shape:'L曲げ',w:10,  c:[500,  800,  1000, 1300, 2000]},
+    {shape:'L曲げ',w:20,  c:[800,  1000, 1300, 1500, 2500]},
+    {shape:'L曲げ',w:30,  c:[1000, 1200, 1500, 1800, 3000]},
+    {shape:'L曲げ',w:50,  c:[1500, 2000, 2500, 3000, 4000]},
+    {shape:'L曲げ',w:80,  c:[2000, 2500, 3000, 3500, 5000]},
+    {shape:'L曲げ',w:100, c:[2500, 3000, 4000, 5000, 6000]},
+    {shape:'L曲げ',w:150, c:[4000, 5000, 6000, 7000, 8000]},
+    {shape:'L曲げ',w:9999,c:[5000, 7000, 8000, 9000, 10000]},
     /* No.2 コの字曲げ */
-    {shape:'コの字曲げ',w:10,  c:[800,  800,  1200, 1500, 2000, 3000]},
-    {shape:'コの字曲げ',w:20,  c:[1200, 1200, 1500, 2000, 2300, 3800]},
-    {shape:'コの字曲げ',w:30,  c:[1500, 1500, 1800, 2300, 2700, 4500]},
-    {shape:'コの字曲げ',w:50,  c:[2300, 2300, 3000, 3800, 4500, 6000]},
-    {shape:'コの字曲げ',w:80,  c:[3000, 3000, 3800, 4500, 5300, 7500]},
-    {shape:'コの字曲げ',w:100, c:[3800, 3800, 4500, 6000, 7500, 9000]},
-    {shape:'コの字曲げ',w:150, c:[6000, 6000, 7500, 9000, 10500,12000]},
-    {shape:'コの字曲げ',w:9999,c:[7500, 7500, 10500,12000,13500,15000]},
+    {shape:'コの字曲げ',w:10,  c:[800,  1200, 1500, 2000, 3000]},
+    {shape:'コの字曲げ',w:20,  c:[1200, 1500, 2000, 2300, 3800]},
+    {shape:'コの字曲げ',w:30,  c:[1500, 1800, 2300, 2700, 4500]},
+    {shape:'コの字曲げ',w:50,  c:[2300, 3000, 3800, 4500, 6000]},
+    {shape:'コの字曲げ',w:80,  c:[3000, 3800, 4500, 5300, 7500]},
+    {shape:'コの字曲げ',w:100, c:[3800, 4500, 6000, 7500, 9000]},
+    {shape:'コの字曲げ',w:150, c:[6000, 7500, 9000, 10500,12000]},
+    {shape:'コの字曲げ',w:9999,c:[7500, 10500,12000,13500,15000]},
     /* No.2 Z曲げ（コの字と同価格） */
-    {shape:'Z曲げ',w:10,  c:[800,  800,  1200, 1500, 2000, 3000]},
-    {shape:'Z曲げ',w:20,  c:[1200, 1200, 1500, 2000, 2300, 3800]},
-    {shape:'Z曲げ',w:30,  c:[1500, 1500, 1800, 2300, 2700, 4500]},
-    {shape:'Z曲げ',w:50,  c:[2300, 2300, 3000, 3800, 4500, 6000]},
-    {shape:'Z曲げ',w:80,  c:[3000, 3000, 3800, 4500, 5300, 7500]},
-    {shape:'Z曲げ',w:100, c:[3800, 3800, 4500, 6000, 7500, 9000]},
-    {shape:'Z曲げ',w:150, c:[6000, 6000, 7500, 9000, 10500,12000]},
-    {shape:'Z曲げ',w:9999,c:[7500, 7500, 10500,12000,13500,15000]},
+    {shape:'Z曲げ',w:10,  c:[800,  1200, 1500, 2000, 3000]},
+    {shape:'Z曲げ',w:20,  c:[1200, 1500, 2000, 2300, 3800]},
+    {shape:'Z曲げ',w:30,  c:[1500, 1800, 2300, 2700, 4500]},
+    {shape:'Z曲げ',w:50,  c:[2300, 3000, 3800, 4500, 6000]},
+    {shape:'Z曲げ',w:80,  c:[3000, 3800, 4500, 5300, 7500]},
+    {shape:'Z曲げ',w:100, c:[3800, 4500, 6000, 7500, 9000]},
+    {shape:'Z曲げ',w:150, c:[6000, 7500, 9000, 10500,12000]},
+    {shape:'Z曲げ',w:9999,c:[7500, 10500,12000,13500,15000]},
     /* No.3 C型曲げ */
-    {shape:'C型曲げ',w:10,  c:[1300, 1300, 2000, 2500, 3300, 5000]},
-    {shape:'C型曲げ',w:20,  c:[2000, 2000, 2500, 3300, 3800, 6300]},
-    {shape:'C型曲げ',w:30,  c:[2500, 2500, 3000, 3800, 4500, 7500]},
-    {shape:'C型曲げ',w:50,  c:[3800, 3800, 5000, 6300, 7500, 10000]},
-    {shape:'C型曲げ',w:80,  c:[5000, 5000, 6300, 7500, 8800, 12500]},
-    {shape:'C型曲げ',w:100, c:[6300, 6300, 7500, 10000,12500,15000]},
-    {shape:'C型曲げ',w:150, c:[10000,10000,12500,15000,17500,20000]},
-    {shape:'C型曲げ',w:9999,c:[12500,12500,17500,20000,22500,25000]},
+    {shape:'C型曲げ',w:10,  c:[1300, 2000, 2500, 3300, 5000]},
+    {shape:'C型曲げ',w:20,  c:[2000, 2500, 3300, 3800, 6300]},
+    {shape:'C型曲げ',w:30,  c:[2500, 3000, 3800, 4500, 7500]},
+    {shape:'C型曲げ',w:50,  c:[3800, 5000, 6300, 7500, 10000]},
+    {shape:'C型曲げ',w:80,  c:[5000, 6300, 7500, 8800, 12500]},
+    {shape:'C型曲げ',w:100, c:[6300, 7500, 10000,12500,15000]},
+    {shape:'C型曲げ',w:150, c:[10000,12500,15000,17500,20000]},
+    {shape:'C型曲げ',w:9999,c:[12500,17500,20000,22500,25000]},
     /* No.3 ハット曲げ（C型と同価格） */
-    {shape:'ハット曲げ',w:10,  c:[1300, 1300, 2000, 2500, 3300, 5000]},
-    {shape:'ハット曲げ',w:20,  c:[2000, 2000, 2500, 3300, 3800, 6300]},
-    {shape:'ハット曲げ',w:30,  c:[2500, 2500, 3000, 3800, 4500, 7500]},
-    {shape:'ハット曲げ',w:50,  c:[3800, 3800, 5000, 6300, 7500, 10000]},
-    {shape:'ハット曲げ',w:80,  c:[5000, 5000, 6300, 7500, 8800, 12500]},
-    {shape:'ハット曲げ',w:100, c:[6300, 6300, 7500, 10000,12500,15000]},
-    {shape:'ハット曲げ',w:150, c:[10000,10000,12500,15000,17500,20000]},
-    {shape:'ハット曲げ',w:9999,c:[12500,12500,17500,20000,22500,25000]},
+    {shape:'ハット曲げ',w:10,  c:[1300, 2000, 2500, 3300, 5000]},
+    {shape:'ハット曲げ',w:20,  c:[2000, 2500, 3300, 3800, 6300]},
+    {shape:'ハット曲げ',w:30,  c:[2500, 3000, 3800, 4500, 7500]},
+    {shape:'ハット曲げ',w:50,  c:[3800, 5000, 6300, 7500, 10000]},
+    {shape:'ハット曲げ',w:80,  c:[5000, 6300, 7500, 8800, 12500]},
+    {shape:'ハット曲げ',w:100, c:[6300, 7500, 10000,12500,15000]},
+    {shape:'ハット曲げ',w:150, c:[10000,12500,15000,17500,20000]},
+    {shape:'ハット曲げ',w:9999,c:[12500,17500,20000,22500,25000]},
     /* No.4 三方曲げ（独自価格。従来は C型にマッピングしていたが分離） */
-    {shape:'三方曲げ',w:10,  c:[1500, 1500, 2400, 3000, 3900, 6000]},
-    {shape:'三方曲げ',w:20,  c:[2400, 2400, 3000, 3900, 4500, 7500]},
-    {shape:'三方曲げ',w:30,  c:[3000, 3000, 3600, 4500, 5400, 9000]},
-    {shape:'三方曲げ',w:50,  c:[4500, 4500, 6000, 7500, 9000, 12000]},
-    {shape:'三方曲げ',w:80,  c:[6000, 6000, 7500, 9000, 10500,15000]},
-    {shape:'三方曲げ',w:100, c:[7500, 7500, 9000, 12000,15000,18000]},
-    {shape:'三方曲げ',w:150, c:[12000,12000,15000,18000,21000,24000]},
-    {shape:'三方曲げ',w:9999,c:[15000,15000,21000,24000,27000,30000]},
+    {shape:'三方曲げ',w:10,  c:[1500, 2400, 3000, 3900, 6000]},
+    {shape:'三方曲げ',w:20,  c:[2400, 3000, 3900, 4500, 7500]},
+    {shape:'三方曲げ',w:30,  c:[3000, 3600, 4500, 5400, 9000]},
+    {shape:'三方曲げ',w:50,  c:[4500, 6000, 7500, 9000, 12000]},
+    {shape:'三方曲げ',w:80,  c:[6000, 7500, 9000, 10500,15000]},
+    {shape:'三方曲げ',w:100, c:[7500, 9000, 12000,15000,18000]},
+    {shape:'三方曲げ',w:150, c:[12000,15000,18000,21000,24000]},
+    {shape:'三方曲げ',w:9999,c:[15000,21000,24000,27000,30000]},
     /* No.5 四方曲げ（独自価格。従来は C型にマッピングしていたが分離） */
-    {shape:'四方曲げ',w:10,  c:[2000, 2000, 3200, 4000, 5200, 8000]},
-    {shape:'四方曲げ',w:20,  c:[3200, 3200, 4000, 5200, 6000, 10000]},
-    {shape:'四方曲げ',w:30,  c:[4000, 4000, 4800, 6000, 7200, 12000]},
-    {shape:'四方曲げ',w:50,  c:[6000, 6000, 8000, 10000,12000,16000]},
-    {shape:'四方曲げ',w:80,  c:[8000, 8000, 10000,12000,14000,20000]},
-    {shape:'四方曲げ',w:100, c:[10000,10000,12000,16000,20000,24000]},
-    {shape:'四方曲げ',w:150, c:[16000,16000,20000,24000,28000,32000]},
-    {shape:'四方曲げ',w:9999,c:[20000,20000,28000,32000,36000,40000]}
+    {shape:'四方曲げ',w:10,  c:[2000, 3200, 4000, 5200, 8000]},
+    {shape:'四方曲げ',w:20,  c:[3200, 4000, 5200, 6000, 10000]},
+    {shape:'四方曲げ',w:30,  c:[4000, 4800, 6000, 7200, 12000]},
+    {shape:'四方曲げ',w:50,  c:[6000, 8000, 10000,12000,16000]},
+    {shape:'四方曲げ',w:80,  c:[8000, 10000,12000,14000,20000]},
+    {shape:'四方曲げ',w:100, c:[10000,12000,16000,20000,24000]},
+    {shape:'四方曲げ',w:150, c:[16000,20000,24000,28000,32000]},
+    {shape:'四方曲げ',w:9999,c:[20000,28000,32000,36000,40000]}
   ];
   function cloneTable(tbl){ return tbl.map(function(r){ return { shape: r.shape, w: r.w, c: r.c.slice(0) }; }); }
 
@@ -948,7 +934,7 @@
     // ヘッダー列を更新
     var headerEl = $('ref-price-header');
     if(headerEl){
-      var lenLabels = shima ? SHIMA_LENGTH_LABELS : ['〜500mm','〜835mm','〜1670mm','〜2505mm','〜3048mm','3048mm超'];
+      var lenLabels = shima ? SHIMA_LENGTH_LABELS : ['〜835mm','〜1670mm','〜2505mm','〜3048mm','3048mm超'];
       var hHtml = '<th class="text-left">重量(kg)</th>';
       for(var k=0;k<lenLabels.length;k++) hHtml += '<th>' + lenLabels[k] + '</th>';
       headerEl.innerHTML = hHtml;
@@ -1001,6 +987,17 @@
   function onRefCellChange(ev){
     var input = ev.target;
     if(!input || !input.classList.contains('ref-input')) return;
+    // 小物基準単価の編集
+    if(input.hasAttribute('data-komono-bend')){
+      var kb = parseInt(input.getAttribute('data-komono-bend'), 10);
+      var kv = parseInt(input.value, 10);
+      if(!isNaN(kb) && kb >= 1 && kb <= 8 && !isNaN(kv) && kv >= 0){
+        currentKomonoTable[kb] = kv;
+        saveKomonoTable();
+        calc();
+      }
+      return;
+    }
     var rowIdx = parseInt(input.getAttribute('data-row'), 10);
     var colIdx = parseInt(input.getAttribute('data-col'), 10);
     if(isNaN(rowIdx) || isNaN(colIdx) || rowIdx < 0 || colIdx < 0) return;
@@ -1062,12 +1059,32 @@
   }
 
   /** 小物：曲げ回数 → 1個あたり基準単価(円)。編集は ref エリアの表で可能 */
-  var KOMONO_BEND_TABLE = { 1: 400, 2: 500, 3: 600, 4: 800, 5: 1000, 6: 1200, 7: 1500, 8: 1800 };
+  var KOMONO_DEFAULT_TABLE = { 1: 400, 2: 500, 3: 600, 4: 800, 5: 1000, 6: 1200, 7: 1500, 8: 1800 };
+  var KOMONO_STORAGE_KEY = 'bending-estimate-komono-table';
+  function cloneKomonoTable(t){ var r={}; for(var k in t){ if(t.hasOwnProperty(k)) r[parseInt(k,10)]=t[k]; } return r; }
+  function loadKomonoTable(){
+    try{
+      var raw = localStorage.getItem(KOMONO_STORAGE_KEY);
+      if(!raw) return null;
+      var obj = JSON.parse(raw);
+      if(typeof obj !== 'object' || obj === null) return null;
+      var ok = true;
+      for(var i=1;i<=8;i++){ if(typeof obj[i] !== 'number'){ ok=false; break; } }
+      return ok ? obj : null;
+    }catch(e){ return null; }
+  }
+  function saveKomonoTable(){
+    try{ localStorage.setItem(KOMONO_STORAGE_KEY, JSON.stringify(currentKomonoTable)); }catch(e){}
+  }
+  var currentKomonoTable = (function(){
+    var loaded = loadKomonoTable();
+    return loaded ? loaded : cloneKomonoTable(KOMONO_DEFAULT_TABLE);
+  })();
   function getKomonoBaseUnit(bendCount){
     var n = parseInt(bendCount, 10);
     if(isNaN(n) || n < 1) n = 4;
     if(n > 8) n = 8;
-    return KOMONO_BEND_TABLE[n] != null ? KOMONO_BEND_TABLE[n] : 800;
+    return currentKomonoTable[n] != null ? currentKomonoTable[n] : 800;
   }
 
   function calc(){
@@ -1087,6 +1104,8 @@
     toggleKomonoWrap(isKomono);
 
     if(isKomono){
+      var kShape = ($('shape') && $('shape').value) || '';
+      syncKomonoBendUI(kShape);
       var bendCountEl = $('komono-bend-count');
       var bendCount = (bendCountEl && bendCountEl.value) ? parseInt(bendCountEl.value, 10) : 4;
       if(isNaN(bendCount) || bendCount < 1) bendCount = 4;
@@ -1100,7 +1119,7 @@
       var baseUnit = getKomonoBaseUnit(bendCount);
       var qtyF = qtyFactor(qty);
       var unitAfterQty = baseUnit * qtyF;
-      var total = Math.max(300, Math.round(unitAfterQty * qty));
+      var total = Math.max(300, Math.round(unitAfterQty));
       var totalInput = $('komono-total-input');
       if(totalInput){ totalInput.value = total; }
       var displayTotal = total;
@@ -1116,19 +1135,49 @@
       $('out-base').textContent = fmt(baseUnit) + ' 円（1個あたり）';
       $('out-qtyF').textContent = String(qtyF);
       $('out-afterQty').textContent = fmt(Math.round(unitAfterQty)) + ' 円（1個あたり）';
-      $('out-small').textContent = '適用なし';
-      $('out-afterSmall').textContent = fmt(total) + ' 円';
       $('out-nakagoshi').textContent = '—';
       $('out-reverse').textContent = '—';
       $('out-long').textContent = '—';
       $('out-fuka').textContent = '—';
       $('out-total').textContent = fmt(displayTotal) + ' 円';
-      var nameEl = $('ref-shape-name'); if(nameEl) nameEl.textContent = '小物（曲げ回数×数量）';
+      var nameEl = $('ref-shape-name'); if(nameEl) nameEl.textContent = '小物（曲げ回数×数量係数）';
       var bodyEl = $('ref-price-body');
       if(bodyEl){
-        var rows = [];
-        for(var b = 1; b <= 8; b++) rows.push('<tr><td class="text-left">' + b + '回</td><td>' + fmt(getKomonoBaseUnit(b)) + ' 円</td></tr>');
-        bodyEl.innerHTML = '<tr><td colspan="7" class="text-left" style="padding:8px;"><table class="ref-table" style="max-width:220px;"><thead><tr><th class="text-left">曲げ回数</th><th>基準単価(円)</th></tr></thead><tbody>' + rows.join('') + '</tbody></table></td></tr>';
+        bodyEl.innerHTML = '';
+        var subTable = document.createElement('table');
+        subTable.className = 'ref-table';
+        subTable.style.maxWidth = '260px';
+        var subThead = document.createElement('thead');
+        subThead.innerHTML = '<tr><th class="text-left">曲げ回数</th><th>基準単価（円）</th></tr>';
+        subTable.appendChild(subThead);
+        var subTbody = document.createElement('tbody');
+        for(var b = 1; b <= 8; b++){
+          var btr = document.createElement('tr');
+          var btd0 = document.createElement('td');
+          btd0.className = 'text-left';
+          btd0.textContent = b + '回';
+          btr.appendChild(btd0);
+          var btd1 = document.createElement('td');
+          var binp = document.createElement('input');
+          binp.type = 'number';
+          binp.min = 0;
+          binp.step = 1;
+          binp.value = getKomonoBaseUnit(b);
+          binp.className = 'ref-input';
+          binp.setAttribute('data-komono-bend', String(b));
+          btd1.appendChild(binp);
+          btr.appendChild(btd1);
+          subTbody.appendChild(btr);
+        }
+        subTable.appendChild(subTbody);
+        var outerTr = document.createElement('tr');
+        var outerTd = document.createElement('td');
+        outerTd.className = 'text-left';
+        outerTd.colSpan = 6;
+        outerTd.style.padding = '8px';
+        outerTd.appendChild(subTable);
+        outerTr.appendChild(outerTd);
+        bodyEl.appendChild(outerTr);
       }
       return;
     }
@@ -1138,8 +1187,6 @@
       $('out-base').textContent = '—';
       $('out-qtyF').textContent = '—';
       $('out-afterQty').textContent = '—';
-      $('out-small').textContent = '—';
-      $('out-afterSmall').textContent = '—';
       $('out-nakagoshi').textContent = '—';
       $('out-reverse').textContent = '—';
       $('out-long').textContent = '—';
@@ -1167,8 +1214,6 @@
       $('out-base').textContent = '—（形状が価格表にありません）';
       $('out-qtyF').textContent = '—';
       $('out-afterQty').textContent = '—';
-      $('out-small').textContent = '—';
-      $('out-afterSmall').textContent = '—';
       $('out-nakagoshi').textContent = '—';
       $('out-reverse').textContent = '—';
       $('out-long').textContent = '—';
@@ -1213,9 +1258,7 @@
     var useQtyFactor = ($('opt-use-qty-factor') && $('opt-use-qty-factor').checked);
     var qtyF = useQtyFactor ? qtyFactor(qty) : 1.0;
     var afterQty = base * qtyF;
-    var smallF = (longSide<=300 && wt<=1.0) ? 0.8 : 1.0;
-    var afterSmall = Math.max(300, Math.round(afterQty * smallF));
-    var v = afterSmall;
+    var v = Math.round(afterQty);
 
     var optNaka = $('opt-nakagoshi')&&$('opt-nakagoshi').checked;
     var optRev = $('opt-reverse')&&$('opt-reverse').checked;
@@ -1239,8 +1282,6 @@
     $('out-base').textContent = fmt(base) + ' 円';
     $('out-qtyF').textContent = useQtyFactor ? String(qtyF) : '1（反映なし）';
     $('out-afterQty').textContent = fmt(afterQty) + ' 円';
-    $('out-small').textContent = smallF===0.8 ? '×0.8 適用' : '適用なし';
-    $('out-afterSmall').textContent = fmt(afterSmall) + ' 円';
     $('out-nakagoshi').textContent = optNaka ? fmt(vNaka)+'→'+fmt(Math.round(vNaka*nakaFactor))+' 円' : '—';
     $('out-reverse').textContent = optRev ? fmt(vRev)+'→'+fmt(Math.round(vRev*revFactor))+' 円' : '—';
     $('out-long').textContent = optLong ? '+'+(longAdd).toLocaleString()+' 円' : '—';
@@ -1254,6 +1295,29 @@
     if(wrap) wrap.style.display = show ? '' : 'none';
     var opts = $('opts-section');
     if(opts) opts.style.display = show ? 'none' : '';
+    if(!show){ var kw = $('komono-bend-wrap'); if(kw) kw.style.display = 'none'; }
+  }
+
+  function syncKomonoBendUI(shape){
+    var wrap    = $('komono-bend-wrap');
+    var textEl  = $('komono-bend-text');
+    var sel     = $('komono-bend-count');
+    if(!wrap) return;
+    var wt  = parseFloat(($('weight') && $('weight').value) || 0) || 0;
+    var len = parseFloat(($('length') && $('length').value) || 0) || 0;
+    if(!isKomonoByDimensions(wt, len)){ wrap.style.display = 'none'; return; }
+    wrap.style.display = '';
+    if(shape === '複数曲げ'){
+      if(sel)    sel.style.display   = '';
+      if(textEl) textEl.style.display = 'none';
+    } else if(shape && SHAPE_BEND_COUNT[shape]){
+      var cnt = SHAPE_BEND_COUNT[shape];
+      if(sel)    { sel.value = String(cnt); sel.style.display = 'none'; }
+      if(textEl) { textEl.textContent = cnt + '回'; textEl.style.display = ''; }
+    } else {
+      if(sel)    { sel.value = '4'; sel.style.display = 'none'; }
+      if(textEl) { textEl.textContent = '—'; textEl.style.display = ''; }
+    }
   }
 
   function addListeners(){
@@ -1351,9 +1415,15 @@
     var btnReset = $('btn-reset-storage');
     if(btnReset){
       btnReset.addEventListener('click', function(){
-        var label = isShima() ? 'CHP価格表' : '通常鋼板価格表';
-        if(!confirm(label + 'を初期値（HTMLの値）に戻します。手動で編集した価格はすべて消えます。よろしいですか？')) return;
-        if(isShima()){
+        var wt = parseFloat(($('weight')&&$('weight').value)||0)||0;
+        var len = parseFloat(($('length')&&$('length').value)||0)||0;
+        var komono = isKomonoByDimensions(wt, len);
+        var label = komono ? '小物基準単価表' : (isShima() ? 'CHP価格表' : '通常鋼板価格表');
+        if(!confirm(label + 'を初期値に戻します。手動で編集した価格はすべて消えます。よろしいですか？')) return;
+        if(komono){
+          localStorage.removeItem(KOMONO_STORAGE_KEY);
+          currentKomonoTable = cloneKomonoTable(KOMONO_DEFAULT_TABLE);
+        } else if(isShima()){
           localStorage.removeItem(SHIMA_STORAGE_KEY);
           currentShimaTable = cloneTable(SHIMA_TABLE);
         } else {
@@ -1539,7 +1609,10 @@
     var weight = parseFloat(($('weight') && $('weight').value) || 0) || 0;
     var bendLength = parseFloat(($('length') && $('length').value) || 0) || 0;
     var bendCount = 1;
-    if(shape === '複数曲げ'){
+    var komonoBendCountVal = parseInt(($('komono-bend-count') && $('komono-bend-count').value) || 4, 10);
+    if(isKomonoByDimensions(weight, bendLength)){
+      bendCount = komonoBendCountVal;
+    } else if(shape === '複数曲げ'){
       bendCount = parseInt(($('bend-count') && $('bend-count').value) || 4, 10);
     } else if(SHAPE_BEND_COUNT[shape]){
       bendCount = SHAPE_BEND_COUNT[shape];
@@ -1672,7 +1745,9 @@
       var dims = (inp.thickness || '?') + 't ' + (inp.lengthL || '?') + '\u00d7' + (inp.widthW || '?');
       var gapClass = r.gap > 0 ? 'gap-positive' : (r.gap < 0 ? 'gap-negative' : '');
       var gapText = (r.gap > 0 ? '+' : '') + fmt(r.gap) + '\u5186 (' + (r.gapPercent > 0 ? '+' : '') + r.gapPercent + '%)';
-      var bendCountDisp = (inp.shape === '複数曲げ' && inp.bendCount) ? inp.bendCount + '\u56de' : '—';
+      var bendCountDisp = inp.komonoMode
+        ? ((inp.komonoBendCount || inp.bendCount) + '\u56de')
+        : ((inp.shape === '複数曲げ' && inp.bendCount) ? inp.bendCount + '\u56de' : '—');
 
       var opts = inp.options || {};
       var optText = formatRecordOptions(opts);
@@ -2309,7 +2384,7 @@
   }
 
   function clearResultPanel(){
-    ['out-base','out-qtyF','out-afterQty','out-small','out-afterSmall',
+    ['out-base','out-qtyF','out-afterQty',
      'out-nakagoshi','out-reverse','out-long','out-fuka','out-total',
      'out-ref-shape','out-weight-band','out-len-band'].forEach(function(id){
       var el=$(id); if(el) el.textContent='—';
