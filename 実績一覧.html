@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>実績一覧 – 曲げ加工見積り</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: "Hiragino Sans", "Yu Gothic", sans-serif; background: #f0f2f5; padding: 16px; }
+    .container { max-width: 1200px; margin: 0 auto; }
+    h1 { font-size: 18px; color: #2F5496; }
+    .subtitle { font-size: 13px; color: #555; line-height: 1.6; margin-bottom: 12px; }
+    a.back { font-size: 12px; color: #2F5496; text-decoration: none; }
+    a.back:hover { text-decoration: underline; }
+
+    .card { background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); padding: 16px 18px; margin-bottom: 12px; }
+    .card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 2px solid #D9E1F2; padding-bottom: 5px; flex-wrap: wrap; gap: 6px; }
+    .card-head h2 { font-size: 14px; color: #2F5496; }
+
+    /* フォーム */
+    .form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(165px, 1fr)); gap: 8px 12px; margin-bottom: 10px; }
+    .fg { display: flex; flex-direction: column; }
+    .fg label { font-size: 11px; color: #555; font-weight: 600; margin-bottom: 2px; }
+    .fg input, .fg select, .fg textarea { padding: 5px 7px; font-size: 13px; border: 1px solid #ccc; border-radius: 4px; background: #FFFDE7; font-family: inherit; }
+    .fg textarea { resize: vertical; min-height: 48px; }
+    .fg input:focus, .fg select:focus, .fg textarea:focus { background: #fff; border-color: #2F5496; outline: none; }
+    .diff-preview { font-size: 12px; padding: 6px 10px; background: #f8f9fa; border-radius: 4px; margin-bottom: 10px; color: #555; }
+    .form-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .form-msg { font-size: 12px; margin-left: 4px; }
+    .form-msg.ok  { color: #2E7D32; }
+    .form-msg.err { color: #C00000; }
+
+    /* ボタン */
+    .btn { padding: 6px 14px; font-size: 13px; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; }
+    .btn-primary   { background: #2F5496; color: #fff; }
+    .btn-primary:hover { background: #1A237E; }
+    .btn-secondary { background: #e0e0e0; color: #333; }
+    .btn-secondary:hover { background: #bdbdbd; }
+    .btn-danger    { background: #FFEBEE; color: #C62828; border: 1px solid #FFCDD2; }
+    .btn-danger:hover { background: #FFCDD2; }
+    .btn-sm { padding: 3px 10px; font-size: 11px; }
+    .btn-icon { padding: 3px 7px; font-size: 11px; background: none; border: 1px solid #ccc; border-radius: 3px; cursor: pointer; }
+    .btn-icon:hover { background: #f5f5f5; }
+
+    /* テーブル */
+    .table-wrap { overflow-x: auto; }
+    table.jt { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 860px; }
+    table.jt th { background: #2F5496; color: #fff; padding: 6px 8px; text-align: left; white-space: nowrap;
+                  cursor: pointer; user-select: none; }
+    table.jt th:hover { background: #1A237E; }
+    table.jt th.r { text-align: right; }
+    table.jt th .arr { margin-left: 3px; opacity: 0.45; font-size: 10px; }
+    table.jt th.active .arr { opacity: 1; }
+    table.jt th.ns { cursor: default; }
+    table.jt th.ns:hover { background: #2F5496; }
+    table.jt td { padding: 5px 8px; border-bottom: 1px solid #e8e8e8; vertical-align: middle; }
+    table.jt td.r { text-align: right; }
+    table.jt tbody tr:hover td { background: #E8EAF6; }
+    table.jt tbody tr.editing td { background: #FFF9C4 !important; }
+    .cnt-badge { font-size: 12px; font-weight: normal; color: #777; background: #f0f2f5; padding: 2px 8px; border-radius: 10px; margin-left: 6px; }
+    .empty-msg { color: #999; font-size: 13px; padding: 20px; text-align: center; }
+
+    /* 差額カラー */
+    .dp { color: #C00000; font-weight: 700; }  /* positive diff: 実績>計算 (計算低め) */
+    .dn { color: #1565C0; font-weight: 700; }  /* negative diff: 実績<計算 (計算高め) */
+    .dok { color: #2E7D32; }                   /* within ±3% */
+
+    /* 分析グリッド */
+    .ag-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 10px; }
+    .ag-card { border: 1px solid #e0e0e0; border-radius: 6px; padding: 10px 12px; background: #fafafa; }
+    .ag-card.over  { border-color: #FF8F00; background: #FFFDE7; }
+    .ag-card.under { border-color: #64B5F6; background: #E3F2FD; }
+    .ag-card.ok    { border-color: #A5D6A7; background: #F1F8E9; }
+    .ag-card h3 { font-size: 13px; font-weight: 700; color: #333; margin-bottom: 6px; }
+    .n-badge { font-size: 10px; font-weight: normal; background: rgba(0,0,0,0.12); padding: 1px 5px; border-radius: 8px; margin-left: 4px; }
+    .ag-row { display: flex; justify-content: space-between; font-size: 12px; padding: 2px 0; }
+    .ag-row .lbl { color: #666; }
+    .ag-row .val { font-weight: 600; }
+    .ag-suggest { margin-top: 7px; font-size: 11px; padding: 5px 8px; border-radius: 4px; font-weight: 600; line-height: 1.5; }
+    .ag-suggest.up   { background: #FFF3E0; color: #E65100; }
+    .ag-suggest.down { background: #E3F2FD; color: #0D47A1; }
+    .ag-suggest.ok   { background: #E8F5E9; color: #2E7D32; }
+
+    @media (max-width: 600px) { .form-grid { grid-template-columns: 1fr 1fr; } }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div style="display:flex;align-items:center;gap:14px;margin-bottom:6px;">
+    <h1>実績一覧</h1>
+    <a href="index.html" class="back">← トップへ</a>
+  </div>
+  <p class="subtitle">
+    決まった単価を記録して、見積りテーブルを育てる。データはブラウザのローカルストレージに保存されます。<br>
+    実績が蓄積したら「差額分析」でテーブルの改善ポイントを確認できます。
+  </p>
+
+  <!-- ===== 登録フォーム ===== -->
+  <div class="card">
+    <div class="card-head">
+      <h2 id="form-title">新規登録</h2>
+      <button class="btn btn-secondary btn-sm" id="form-toggle-btn" onclick="toggleForm()">▲ 折りたたむ</button>
+    </div>
+    <div id="form-body">
+      <div class="form-grid">
+        <div class="fg"><label>案件番号</label><input type="text" id="f-id" placeholder="例: NO_527065"></div>
+        <div class="fg"><label>日付</label><input type="date" id="f-date"></div>
+        <div class="fg">
+          <label>形状</label>
+          <select id="f-shape">
+            <option value="">— 選択 —</option>
+            <option>L曲げ</option><option>Z曲げ</option><option>コの字曲げ</option>
+            <option>C型曲げ</option><option>三方曲げ</option><option>四方曲げ</option>
+            <option>ハット曲げ</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label>板厚 (mm)</label>
+          <select id="f-thickness">
+            <option value="">— 選択 —</option>
+            <option>1.0</option><option>1.2</option><option>1.6</option><option>2.3</option>
+            <option>3.2</option><option>4.5</option><option>6.0</option>
+            <option>9.0</option><option>12.0</option><option>16.0</option><option>19.0</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label>材質</label>
+          <select id="f-material">
+            <option value="">— 選択 —</option>
+            <option>SS400</option><option>ボンデ</option><option>ミガキ</option>
+            <option>酸洗</option><option>SUS304</option><option>CHP</option>
+          </select>
+        </div>
+        <div class="fg"><label>展開L (mm)</label><input type="number" id="f-length" step="1" min="0" placeholder="396"></div>
+        <div class="fg"><label>展開W (mm)</label><input type="number" id="f-width" step="1" min="0" placeholder="70"></div>
+        <div class="fg"><label>数量 (個)</label><input type="number" id="f-qty" step="1" min="1" placeholder="1"></div>
+        <div class="fg">
+          <label>実績単価 (円/個・税抜)</label>
+          <input type="number" id="f-actual" step="10" min="0" placeholder="1380" oninput="updateDiffPreview()">
+        </div>
+        <div class="fg">
+          <label>計算単価 (円/個・税抜)</label>
+          <input type="number" id="f-calc" step="10" min="0" placeholder="1350" oninput="updateDiffPreview()">
+        </div>
+      </div>
+      <div class="diff-preview" id="diff-preview">実績単価と計算単価を両方入力すると差額をここに表示します。</div>
+      <div class="fg" style="margin-bottom:10px;">
+        <label>メモ（穴あけ内訳・特記など）</label>
+        <textarea id="f-note" placeholder="例: 丸穴4×15φ込み。穴あけ分200円、曲げとの差額30円/個。"></textarea>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="saveRecord()">保存</button>
+        <button class="btn btn-secondary" onclick="resetForm()">クリア</button>
+        <span class="form-msg" id="form-msg"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 実績テーブル ===== -->
+  <div class="card">
+    <div class="card-head">
+      <h2>実績一覧 <span class="cnt-badge" id="cnt-badge">0件</span></h2>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button class="btn btn-secondary btn-sm" onclick="exportCSV()">CSV出力</button>
+        <button class="btn btn-secondary btn-sm" onclick="exportJSON()">JSONバックアップ</button>
+        <label class="btn btn-secondary btn-sm" style="cursor:pointer;">
+          JSONインポート
+          <input type="file" id="import-file" accept=".json" style="display:none;" onchange="importJSON(event)">
+        </label>
+        <button class="btn btn-danger btn-sm" onclick="clearAll()">全件削除</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table class="jt">
+        <thead>
+          <tr>
+            <th onclick="setSort('id')" data-col="id">案件番号<span class="arr">↕</span></th>
+            <th onclick="setSort('date')" data-col="date">日付<span class="arr">↕</span></th>
+            <th onclick="setSort('shape')" data-col="shape">形状<span class="arr">↕</span></th>
+            <th onclick="setSort('thickness')" data-col="thickness" class="r">板厚<span class="arr">↕</span></th>
+            <th onclick="setSort('material')" data-col="material">材質<span class="arr">↕</span></th>
+            <th onclick="setSort('length')" data-col="length" class="r">展開L<span class="arr">↕</span></th>
+            <th onclick="setSort('width')" data-col="width" class="r">展開W<span class="arr">↕</span></th>
+            <th onclick="setSort('qty')" data-col="qty" class="r">数量<span class="arr">↕</span></th>
+            <th onclick="setSort('actual')" data-col="actual" class="r">実績単価<span class="arr">↕</span></th>
+            <th onclick="setSort('calc')" data-col="calc" class="r">計算単価<span class="arr">↕</span></th>
+            <th onclick="setSort('diff')" data-col="diff" class="r">差額<span class="arr">↕</span></th>
+            <th onclick="setSort('diffRate')" data-col="diffRate" class="r">差額率<span class="arr">↕</span></th>
+            <th class="ns">メモ</th>
+            <th class="ns">操作</th>
+          </tr>
+        </thead>
+        <tbody id="jt-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ===== 差額分析 ===== -->
+  <div class="card" id="analysis-card" style="display:none;">
+    <div class="card-head">
+      <h2>差額分析 — テーブル改善への示唆</h2>
+    </div>
+    <p style="font-size:12px;color:#555;margin-bottom:10px;">
+      形状×板厚グループ別に実績と計算の差を集計します。差額率が大きいグループは単価テーブルの調整候補です。<br>
+      <span class="dp">赤（正）</span> = 計算が低すぎる &nbsp;|&nbsp; <span class="dn">青（負）</span> = 計算が高すぎる &nbsp;|&nbsp; <span class="dok">緑</span> = ほぼ適正（±3%以内）
+    </p>
+    <div class="ag-grid" id="ag-grid"></div>
+  </div>
+
+</div><!-- /container -->
+
+<script>
+// ===== 定数・初期データ =====
+const STORAGE_KEY = 'jisseki_records_v1';
+
+// 初回起動時のシードデータ（実績メモ.md の NO_527065 を反映）
+const SEED = [
+  {
+    _id: 'seed_1', id: 'NO_527065', date: '', shape: 'ハット曲げ',
+    thickness: '6.0', material: 'SS400', length: 396, width: 70, qty: 2,
+    actual: 1380, calc: 1350,
+    note: '穴4-15φ込み。曲げのみ計算との差額30円/個。実績メモより。'
+  }
+];
+
+let records = [];
+let sortCol = 'date';
+let sortDir = -1; // -1=降順（新しい順）
+let editingId = null;
+let formOpen = true;
+
+// ===== ストレージ =====
+function loadRecords() {
+  try { records = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null'); } catch { records = null; }
+  if (!Array.isArray(records)) { records = SEED.map(r => ({ ...r })); saveAll(); }
+}
+function saveAll() { localStorage.setItem(STORAGE_KEY, JSON.stringify(records)); }
+
+// ===== ユーティリティ =====
+function $(id) { return document.getElementById(id); }
+function genId() { return 'r_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6); }
+function today() { return new Date().toISOString().slice(0, 10); }
+function fmt(n) { return Math.round(n).toLocaleString(); }
+function fmtDiff(n) { return (n >= 0 ? '+' : '') + fmt(n); }
+function fmtRate(r) { return (r >= 0 ? '+' : '') + r.toFixed(1) + '%'; }
+function esc(s) {
+  return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+function getDiff(r) { return (r.actual || 0) - (r.calc || 0); }
+function getDiffRate(r) { return r.calc ? ((r.actual - r.calc) / r.calc * 100) : 0; }
+function diffCls(rate) { return Math.abs(rate) <= 3 ? 'dok' : rate > 0 ? 'dp' : 'dn'; }
+
+// ===== ソート =====
+function setSort(col) {
+  if (sortCol === col) sortDir = -sortDir;
+  else { sortCol = col; sortDir = col === 'date' ? -1 : 1; }
+  renderTable();
+}
+function sortedRecords() {
+  return [...records].sort((a, b) => {
+    let av, bv;
+    if (sortCol === 'diff') { av = getDiff(a); bv = getDiff(b); }
+    else if (sortCol === 'diffRate') { av = getDiffRate(a); bv = getDiffRate(b); }
+    else { av = a[sortCol] ?? ''; bv = b[sortCol] ?? ''; }
+    if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * sortDir;
+    return String(av).localeCompare(String(bv), 'ja') * sortDir;
+  });
+}
+
+// ===== 描画 =====
+function renderTable() {
+  $('cnt-badge').textContent = records.length + '件';
+
+  // ソート矢印の更新
+  document.querySelectorAll('table.jt th[data-col]').forEach(th => {
+    th.classList.remove('active');
+    const arr = th.querySelector('.arr'); if (arr) arr.textContent = '↕';
+  });
+  const ath = document.querySelector(`table.jt th[data-col="${sortCol}"]`);
+  if (ath) { ath.classList.add('active'); const arr = ath.querySelector('.arr'); if (arr) arr.textContent = sortDir === 1 ? '↑' : '↓'; }
+
+  const tbody = $('jt-body');
+  if (records.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="14" class="empty-msg">データがありません。上のフォームから登録してください。</td></tr>';
+    $('analysis-card').style.display = 'none';
+    return;
+  }
+
+  tbody.innerHTML = sortedRecords().map(r => {
+    const diff = getDiff(r), rate = getDiffRate(r);
+    const has = r.actual && r.calc;
+    const dc = has ? diffCls(rate) : '';
+    const rowCls = r._id === editingId ? 'editing' : '';
+    return `<tr class="${rowCls}">
+      <td>${esc(r.id || '—')}</td>
+      <td style="white-space:nowrap;">${r.date || '—'}</td>
+      <td>${esc(r.shape || '—')}</td>
+      <td class="r">${r.thickness ? 't' + r.thickness : '—'}</td>
+      <td>${esc(r.material || '—')}</td>
+      <td class="r">${r.length ? fmt(r.length) : ''}</td>
+      <td class="r">${r.width ? fmt(r.width) : ''}</td>
+      <td class="r">${r.qty || 1}</td>
+      <td class="r">${r.actual ? fmt(r.actual) + '円' : '—'}</td>
+      <td class="r">${r.calc ? fmt(r.calc) + '円' : '—'}</td>
+      <td class="r ${dc}">${has ? fmtDiff(diff) + '円' : '—'}</td>
+      <td class="r ${dc}">${has ? fmtRate(rate) : '—'}</td>
+      <td style="max-width:180px;font-size:11px;color:#555;">${esc(r.note || '')}</td>
+      <td style="white-space:nowrap;">
+        <button class="btn-icon" style="color:#1565C0;" onclick="loadIntoCalc('${r._id}')">計算書で開く</button>
+        <button class="btn-icon" onclick="editRecord('${r._id}')">編集</button>
+        <button class="btn-icon" style="color:#C62828;" onclick="deleteRecord('${r._id}')">削除</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  renderAnalysis();
+}
+
+function renderAnalysis() {
+  const valid = records.filter(r => r.actual && r.calc);
+  if (valid.length === 0) { $('analysis-card').style.display = 'none'; return; }
+  $('analysis-card').style.display = '';
+
+  // 形状×板厚でグループ化
+  const groups = {};
+  valid.forEach(r => {
+    const key = (r.shape || '不明') + '__' + (r.thickness || '?');
+    if (!groups[key]) groups[key] = { shape: r.shape || '不明', thickness: r.thickness || '?', recs: [] };
+    groups[key].recs.push(r);
+  });
+
+  const list = Object.values(groups).sort((a, b) => {
+    if (a.shape !== b.shape) return a.shape.localeCompare(b.shape, 'ja');
+    return parseFloat(a.thickness) - parseFloat(b.thickness);
+  });
+
+  $('ag-grid').innerHTML = list.map(g => {
+    const n = g.recs.length;
+    const avgActual = g.recs.reduce((s, r) => s + r.actual, 0) / n;
+    const avgCalc   = g.recs.reduce((s, r) => s + r.calc, 0) / n;
+    const avgDiff = avgActual - avgCalc;
+    const avgRate = avgCalc ? (avgDiff / avgCalc * 100) : 0;
+    const dc = diffCls(avgRate);
+
+    // 示唆テキスト（kg単価ベースで調整例を提示）
+    const BASE_KG = 185;
+    const adjKg = Math.round(BASE_KG * (1 + avgRate / 100));
+    let sugText, sugCls;
+    if (Math.abs(avgRate) <= 3) {
+      sugText = '現状のテーブルはほぼ適正（差額 ±3% 以内）';
+      sugCls = 'ok';
+    } else if (avgRate > 3) {
+      sugText = `計算が実績より${fmtRate(avgRate)}低め。kg単価の引き上げ検討（例: ${BASE_KG}円 → ${adjKg}円/kg）`;
+      sugCls = 'up';
+    } else {
+      sugText = `計算が実績より${fmtRate(-avgRate)}高め。kg単価の引き下げ検討（例: ${BASE_KG}円 → ${adjKg}円/kg）`;
+      sugCls = 'down';
+    }
+
+    // カード色クラス
+    const cardCls = Math.abs(avgRate) <= 3 ? 'ok' : avgDiff > 0 ? 'over' : 'under';
+
+    return `<div class="ag-card ${cardCls}">
+      <h3>${esc(g.shape)} t${g.thickness}<span class="n-badge">${n}件</span></h3>
+      <div class="ag-row"><span class="lbl">実績単価（平均）</span><span class="val">${fmt(avgActual)}円</span></div>
+      <div class="ag-row"><span class="lbl">計算単価（平均）</span><span class="val">${fmt(avgCalc)}円</span></div>
+      <div class="ag-row"><span class="lbl">差額（平均）</span><span class="val ${dc}">${fmtDiff(avgDiff)}円</span></div>
+      <div class="ag-row"><span class="lbl">差額率（平均）</span><span class="val ${dc}">${fmtRate(avgRate)}</span></div>
+      <div class="ag-suggest ${sugCls}">${sugText}</div>
+    </div>`;
+  }).join('');
+}
+
+// ===== フォーム差額プレビュー =====
+function updateDiffPreview() {
+  const a = parseFloat($('f-actual').value) || 0;
+  const c = parseFloat($('f-calc').value) || 0;
+  const el = $('diff-preview');
+  if (!a || !c) {
+    el.textContent = '実績単価と計算単価を両方入力すると差額をここに表示します。';
+    el.style.color = '#555'; return;
+  }
+  const diff = a - c, rate = c ? (diff / c * 100) : 0;
+  el.textContent = `差額: ${fmtDiff(diff)}円  /  差額率: ${fmtRate(rate)}  （実績 ${fmt(a)}円 − 計算 ${fmt(c)}円）`;
+  el.style.color = Math.abs(rate) <= 3 ? '#2E7D32' : diff > 0 ? '#C00000' : '#1565C0';
+}
+
+// ===== CRUD =====
+function saveRecord() {
+  const id        = $('f-id').value.trim();
+  const date      = $('f-date').value;
+  const shape     = $('f-shape').value;
+  const thickness = $('f-thickness').value;
+  const material  = $('f-material').value;
+  const length    = parseFloat($('f-length').value) || 0;
+  const width     = parseFloat($('f-width').value) || 0;
+  const qty       = parseInt($('f-qty').value) || 1;
+  const actual    = parseFloat($('f-actual').value) || 0;
+  const calc      = parseFloat($('f-calc').value) || 0;
+  const note      = $('f-note').value.trim();
+
+  if (!actual) { showMsg('実績単価を入力してください', 'err'); return; }
+
+  if (editingId) {
+    const idx = records.findIndex(r => r._id === editingId);
+    if (idx >= 0) records[idx] = { ...records[idx], id, date, shape, thickness, material, length, width, qty, actual, calc, note };
+    editingId = null;
+    $('form-title').textContent = '新規登録';
+  } else {
+    records.push({ _id: genId(), id, date, shape, thickness, material, length, width, qty, actual, calc, note });
+  }
+  saveAll(); renderTable(); showMsg('保存しました', 'ok');
+}
+
+function resetForm() {
+  editingId = null;
+  $('form-title').textContent = '新規登録';
+  ['f-id', 'f-length', 'f-width', 'f-actual', 'f-calc', 'f-note', 'f-qty'].forEach(id => { $(id).value = ''; });
+  $('f-date').value = today();
+  $('f-shape').value = '';
+  $('f-thickness').value = '';
+  $('f-material').value = '';
+  $('diff-preview').textContent = '実績単価と計算単価を両方入力すると差額をここに表示します。';
+  $('diff-preview').style.color = '#555';
+  showMsg('');
+}
+
+function editRecord(rid) {
+  const r = records.find(rec => rec._id === rid); if (!r) return;
+  editingId = rid;
+  $('form-title').textContent = '編集中: ' + (r.id || rid);
+  $('f-id').value        = r.id || '';
+  $('f-date').value      = r.date || '';
+  $('f-shape').value     = r.shape || 'ハット曲げ';
+  $('f-thickness').value = r.thickness || '6.0';
+  $('f-material').value  = r.material || 'SS400';
+  $('f-length').value    = r.length || '';
+  $('f-width').value     = r.width || '';
+  $('f-qty').value       = r.qty || 1;
+  $('f-actual').value    = r.actual || '';
+  $('f-calc').value      = r.calc || '';
+  $('f-note').value      = r.note || '';
+  updateDiffPreview();
+  if (!formOpen) toggleForm();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  renderTable();
+}
+
+function deleteRecord(rid) {
+  if (!confirm('この実績を削除しますか？')) return;
+  records = records.filter(r => r._id !== rid);
+  if (editingId === rid) { editingId = null; resetForm(); }
+  saveAll(); renderTable();
+}
+
+function clearAll() {
+  if (!confirm('全件削除しますか？この操作は元に戻せません。')) return;
+  records = []; saveAll(); renderTable();
+}
+
+// ===== フォーム折りたたみ =====
+function toggleForm() {
+  formOpen = !formOpen;
+  $('form-body').style.display = formOpen ? '' : 'none';
+  $('form-toggle-btn').textContent = formOpen ? '▲ 折りたたむ' : '▼ 開く';
+}
+
+// ===== メッセージ =====
+function showMsg(msg, type) {
+  const el = $('form-msg');
+  el.textContent = msg; el.className = 'form-msg ' + (type || '');
+  if (msg) setTimeout(() => { if (el.textContent === msg) el.textContent = ''; }, 3000);
+}
+
+// ===== エクスポート / インポート =====
+function dlBlob(content, mime, filename) {
+  const blob = new Blob([content], { type: mime });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = filename; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+function exportCSV() {
+  if (!records.length) { alert('データがありません'); return; }
+  const hdr = ['案件番号', '日付', '形状', '板厚', '材質', '展開L(mm)', '展開W(mm)', '数量', '実績単価', '計算単価', '差額', '差額率(%)', 'メモ'];
+  const rows = records.map(r => {
+    const diff = getDiff(r), rate = getDiffRate(r), has = r.actual && r.calc;
+    return [r.id || '', r.date || '', r.shape || '', r.thickness || '', r.material || '',
+            r.length || '', r.width || '', r.qty || 1, r.actual || '', r.calc || '',
+            has ? diff : '', has ? rate.toFixed(1) : '',
+            (r.note || '').replace(/,/g, '、').replace(/\n/g, ' ')].join(',');
+  });
+  dlBlob('\uFEFF' + [hdr.join(','), ...rows].join('\n'), 'text/csv', '実績一覧_' + today() + '.csv');
+}
+
+function exportJSON() {
+  if (!records.length) { alert('データがありません'); return; }
+  dlBlob(JSON.stringify(records, null, 2), 'application/json', '実績一覧_' + today() + '.json');
+}
+
+function importJSON(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (!Array.isArray(data)) { alert('JSONの形式が正しくありません（配列が必要）'); return; }
+      if (!confirm(`${data.length}件のデータを現在のデータに追加しますか？（上書きではなく追加）`)) return;
+      const existIds = new Set(records.map(r => r._id));
+      data.forEach(r => {
+        if (!r._id || existIds.has(r._id)) r._id = genId();
+        records.push(r);
+      });
+      saveAll(); renderTable();
+      showMsg(data.length + '件を追加しました', 'ok');
+    } catch { alert('JSONの読み込みに失敗しました'); }
+    e.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
+// ===== 計算書への呼び出し =====
+const LOAD_REQUEST_KEY = 'bending_load_request';
+
+function loadIntoCalc(rid) {
+  const r = records.find(rec => rec._id === rid);
+  if (!r) return;
+  localStorage.setItem(LOAD_REQUEST_KEY, JSON.stringify(r));
+  // 既に計算書タブが開いていれば storage イベントで受け取る。なければ新規タブで開く
+  window.open('曲げ見積り計算書.html', 'bending_calc');
+}
+
+// ===== 初期化 =====
+loadRecords();
+$('f-date').value = today();
+renderTable();
+</script>
+</body>
+</html>
