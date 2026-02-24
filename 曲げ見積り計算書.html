@@ -1353,6 +1353,17 @@
         .catch(function(){});
     }
   }
+  function refreshRecordsFromServer(){
+    var url = getRecordsApiUrl();
+    if(!url) return;
+    fetch(url).then(function(r){ return r.json(); }).then(function(arr){
+      if(!Array.isArray(arr)) return;
+      RECORDS_CACHE = arr;
+      try { localStorage.setItem(RECORDS_STORAGE_KEY, JSON.stringify(arr)); } catch(e){}
+      if($('record-list-section') && $('record-list-section').style.display !== 'none') renderRecordList();
+    }).catch(function(){});
+  }
+
   function initRecordsFromServer(callback){
     var url = getRecordsApiUrl();
     if(!url){ RECORDS_CACHE = loadRecordsFromLocalStorage(); if(callback) callback(); return; }
@@ -1633,7 +1644,8 @@
   }
 
   function recalcAllRecords(){
-    var records = loadRecords();
+    var url = getRecordsApiUrl();
+    function doRecalc(records){
     var targets = records.filter(function(r){ return r.id !== SETTINGS_RECORD_ID; });
     if(targets.length === 0){ showRecordMsg('再計算する実績がありません'); return; }
 
@@ -1695,6 +1707,15 @@
     saveRecords(records);
     renderRecordList();
     showRecordMsg('✓ ' + targets.length + '件の計算値を現在の工賃で更新しました');
+    } // end doRecalc
+    if(url){
+      fetch(url).then(function(r){ return r.json(); }).then(function(arr){
+        RECORDS_CACHE = Array.isArray(arr) ? arr : [];
+        doRecalc(RECORDS_CACHE);
+      }).catch(function(){ doRecalc(loadRecords()); });
+    } else {
+      doRecalc(loadRecords());
+    }
   }
 
   function deleteRecord(recordId){
@@ -2316,6 +2337,11 @@
   // 実績一覧タブがすでに開いているときに storage イベントで受け取る
   window.addEventListener('storage', function(ev){
     if(ev.key === LOAD_REQUEST_KEY && ev.newValue) checkLoadRequest();
+  });
+
+  // タブに戻ったとき（他のタブから切り替えたとき）にGASから最新実績を取得
+  document.addEventListener('visibilitychange', function(){
+    if(!document.hidden) refreshRecordsFromServer();
   });
 
   document.addEventListener('keydown', function(ev){
