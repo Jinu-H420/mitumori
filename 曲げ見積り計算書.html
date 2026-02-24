@@ -323,6 +323,7 @@
         <div class="record-actions">
           <button class="btn btn-primary" id="save-record-btn">記録する</button>
           <button class="btn btn-secondary" id="toggle-records-btn">実績一覧を見る</button>
+          <button class="btn btn-secondary" id="recalc-all-btn">今の工賃で再計算</button>
           <button class="btn btn-secondary" id="csv-download-btn">CSVでダウンロード</button>
           <input type="file" id="customer-csv-file" accept=".csv" style="display:none;">
           <button class="btn btn-secondary" id="customer-csv-import-btn">得意先CSV読み込み</button>
@@ -1632,6 +1633,71 @@
     showLoadToast(r.id || '（番号なし）', inp.shape, inp.thickness);
   }
 
+  function recalcAllRecords(){
+    var records = loadRecords();
+    var targets = records.filter(function(r){ return r.id !== SETTINGS_RECORD_ID; });
+    if(targets.length === 0){ showRecordMsg('再計算する実績がありません'); return; }
+
+    // 現在のフォーム状態を保存
+    var saved = captureInputState();
+    var savedOvW = override.weight;
+    var savedOvL = override.length;
+
+    for(var i = 0; i < records.length; i++){
+      var r = records[i];
+      if(r.id === SETTINGS_RECORD_ID) continue;
+      var inp = r.input || {};
+      var opts = inp.options || {};
+
+      if($('thickness')) $('thickness').value = inp.thickness != null ? String(inp.thickness) : '';
+      if($('tate'))      $('tate').value      = inp.lengthL   != null ? String(inp.lengthL)   : '';
+      if($('yoko'))      $('yoko').value      = inp.widthW    != null ? String(inp.widthW)    : '';
+      if($('yocho'))     $('yocho').value     = inp.extraLength != null ? String(inp.extraLength) : '';
+      if($('shape'))     $('shape').value     = inp.shape     || '';
+      if($('qty'))       $('qty').value       = inp.quantity  != null ? String(inp.quantity)  : '1';
+      if($('bend-count') && inp.shape === '複数曲げ') $('bend-count').value = inp.bendCount != null ? String(inp.bendCount) : '4';
+
+      if(inp.weight != null && $('weight')){ $('weight').value = inp.weight; override.weight = true; }
+      else { override.weight = false; }
+      if(inp.bendLength != null && $('length')){ $('length').value = inp.bendLength; override.length = true; }
+      else { override.length = false; }
+
+      if($('opt-use-qty-factor'))  $('opt-use-qty-factor').checked  = !!opts.quantityCoeff;
+      if($('opt-nakagoshi'))       $('opt-nakagoshi').checked       = !!opts.nakagoshi;
+      if($('opt-nakagoshi-factor') && opts.nakagoshiFactor != null) $('opt-nakagoshi-factor').value = String(opts.nakagoshiFactor);
+      if($('opt-reverse'))         $('opt-reverse').checked         = !!opts.reverse;
+      if($('opt-reverse-factor')   && opts.reverseFactor   != null) $('opt-reverse-factor').value   = String(opts.reverseFactor);
+      if($('opt-long-meoshi'))     $('opt-long-meoshi').checked     = !!opts.longPress;
+      if($('opt-long-meoshi-add')  && opts.longMeoshiAdd   != null) $('opt-long-meoshi-add').value  = String(opts.longMeoshiAdd);
+      if($('opt-fukabori'))        $('opt-fukabori').checked        = !!opts.deep;
+      if($('opt-fukabori-add')     && opts.fukaboriAdd     != null) $('opt-fukabori-add').value     = String(opts.fukaboriAdd);
+
+      calc();
+
+      var totalText = ($('out-total') && $('out-total').textContent.replace(/[^0-9.-]/g,'')) || '';
+      var newCalc = parseFloat(totalText);
+      if(!isNaN(newCalc) && newCalc > 0){
+        r.calculated = newCalc;
+        r.gap        = r.actual - newCalc;
+        r.gapPercent = newCalc !== 0 ? Math.round(r.gap / newCalc * 100) : 0;
+      }
+    }
+
+    // フォーム状態を復元
+    override.weight = savedOvW;
+    override.length = savedOvL;
+    var ids = ['thickness','tate','yoko','yocho','shape','qty','weight','length','length-source','bend-count',
+               'opt-nakagoshi-factor','opt-reverse-factor','opt-long-meoshi-add','opt-fukabori-add'];
+    var checks = ['opt-use-qty-factor','opt-nakagoshi','opt-reverse','opt-long-meoshi','opt-fukabori'];
+    ids.forEach(function(id){ var el=$(id); if(el && saved[id] != null) el.value = saved[id]; });
+    checks.forEach(function(id){ var el=$(id); if(el && saved[id] != null) el.checked = !!saved[id]; });
+    calc();
+
+    saveRecords(records);
+    renderRecordList();
+    showRecordMsg('✓ ' + targets.length + '件の計算値を現在の工賃で更新しました');
+  }
+
   function deleteRecord(recordId){
     function doDelete(records){
       records = records.filter(function(r){ return r.id !== recordId; });
@@ -1794,6 +1860,13 @@
     if(notice){ notice.textContent = msg; notice.style.display = 'block'; }
     if(warn){ warn.textContent = '⚠ ' + msg; warn.style.display = 'block'; }
   })();
+
+  var recalcAllBtnEl = $('recalc-all-btn');
+  if(recalcAllBtnEl) recalcAllBtnEl.addEventListener('click', function(){
+    if(confirm('全件の計算値を現在の工賃・価格表で更新します。よろしいですか？')){
+      recalcAllRecords();
+    }
+  });
 
   var csvBtnEl = $('csv-download-btn');
   if(csvBtnEl) csvBtnEl.addEventListener('click', downloadCSV);
