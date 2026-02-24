@@ -151,6 +151,8 @@
     .mem-btn:hover { border-color: #999; background: #e4e4e4; color: #555; }
     .mem-btn.active { background: #27ae60; color: #fff; border-color: #27ae60; }
     .mem-btn.active:hover { background: #219a52; border-color: #1e8449; }
+    /* 小物対応バッジ */
+    .komono-badge { display: inline-block; margin-left: 10px; padding: 2px 8px; font-size: 11px; font-weight: 700; color: #2F5496; background: #D9E1F2; border-radius: 4px; vertical-align: middle; }
   </style>
 </head>
 <body>
@@ -158,6 +160,7 @@
     <div class="header">
       <h1>曲げ見積り計算書</h1>
       <span class="purpose">曲げ工賃のみ・材料費・穴あけなし。寸法入力で重量・長さ自動計算。</span>
+      <span class="komono-badge" title="重量≤1kg かつ 曲げ長さ≤300mm のとき曲げ回数×数量で工賃を試算">小物対応</span>
     </div>
     <div class="main">
       <div class="left">
@@ -217,7 +220,12 @@
                 <option value="8">8回</option>
               </select>
             </div>
-            <p class="note" style="margin:0;">数量は下の「数量」欄を使用。曲げ回数ごとの基準単価に数量係数（1〜4個×1.5、5〜19個×1.0、20個〜×0.8）をかけ、合計は最低300円。</p>
+            <p class="note" style="margin:0 0 6px 0;">数量は下の「数量」欄を使用。曲げ回数ごとの基準単価に数量係数（1〜4個×1.5、5〜19個×1.0、20個〜×0.8）をかけ、合計は最低300円。</p>
+            <div class="row">
+              <label style="width:100px;">曲げ工賃（円）</label>
+              <input type="number" id="komono-total-input" min="0" step="1" placeholder="計算値（変更可）" class="no-spin" style="width:100px; padding:4px 6px; font-size:13px; border:1px solid #2F5496; border-radius:3px; background:#f0f7ff;">
+              <span class="note" style="margin-left:6px;">← 計算結果を表示。工賃の考え方を試すときはここを直接変更できます。</span>
+            </div>
           </div>
           <div class="grid2">
             <div class="row"><label>形状</label>
@@ -1093,6 +1101,13 @@
       var qtyF = qtyFactor(qty);
       var unitAfterQty = baseUnit * qtyF;
       var total = Math.max(300, Math.round(unitAfterQty * qty));
+      var totalInput = $('komono-total-input');
+      if(totalInput){ totalInput.value = total; }
+      var displayTotal = total;
+      if(totalInput && totalInput.value !== ''){
+        var v = parseInt(String(totalInput.value).replace(/[^0-9-]/g, ''), 10);
+        if(!isNaN(v) && v >= 0) displayTotal = v;
+      }
       if($('out-ref-shape'))    $('out-ref-shape').textContent    = '小物（曲げ' + bendCount + '回）';
       if($('out-weight-band'))  $('out-weight-band').textContent  = '—';
       if($('out-len-band'))     $('out-len-band').textContent     = '—';
@@ -1107,7 +1122,7 @@
       $('out-reverse').textContent = '—';
       $('out-long').textContent = '—';
       $('out-fuka').textContent = '—';
-      $('out-total').textContent = fmt(total) + ' 円';
+      $('out-total').textContent = fmt(displayTotal) + ' 円';
       var nameEl = $('ref-shape-name'); if(nameEl) nameEl.textContent = '小物（曲げ回数×数量）';
       var bodyEl = $('ref-price-body');
       if(bodyEl){
@@ -1265,6 +1280,17 @@
     // 小物：曲げ回数変更で再計算
     var komonoBendEl = $('komono-bend-count');
     if(komonoBendEl){ komonoBendEl.addEventListener('change', calc); komonoBendEl.addEventListener('input', calc); }
+    // 小物：工賃を直接変更したときに右側の合計表示を更新
+    var komonoTotalInput = $('komono-total-input');
+    if(komonoTotalInput){
+      function syncKomonoTotalToOut(){
+        var v = parseInt(String(komonoTotalInput.value).replace(/[^0-9-]/g, ''), 10);
+        var outTotal = $('out-total');
+        if(outTotal) outTotal.textContent = (!isNaN(v) && v >= 0) ? fmt(v) + ' 円' : '—';
+      }
+      komonoTotalInput.addEventListener('input', syncKomonoTotalToOut);
+      komonoTotalInput.addEventListener('change', syncKomonoTotalToOut);
+    }
 
     // その他
     var ids = ['shape','qty','bend-count'];
