@@ -1,0 +1,12 @@
+{
+  "unit_price": 500,
+  "material_cost": 185,
+  "total_price": 6850,
+  "details": {
+    "base_price": 500,
+    "quantity_factor": 1.0,
+    "complexity_factor": 1.0,
+    "weight_class": "10kg",
+    "length_class": "835mm"
+  }
+}
