@@ -27,6 +27,8 @@
     .grid2 .row { margin-bottom: 4px; }
     .computed { background: #f0f7ff; padding: 5px 8px; border-radius: 3px; font-size: 13px; margin-top: 4px; }
     .computed span { font-weight: 700; }
+    .computed .wt-val { font-size: 15px; color: #2F5496; }
+    .weight-auto { background: #e8f4fd !important; border-color: #90c8e8 !important; }
     .opts { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px 8px; }
     .opts .opt-ttl { width: 100%; font-size: 12px; color: #555; font-weight: 600; }
     .opts label {
@@ -160,7 +162,7 @@
     <div class="header">
       <h1>曲げ見積り計算書</h1>
       <span class="purpose">曲げ工賃のみ・材料費・穴あけなし。寸法入力で重量・長さ自動計算。</span>
-      <span class="komono-badge" title="重量≤1kg かつ 曲げ長さ≤300mm のとき曲げ回数×数量で工賃を試算">小物対応</span>
+      <span class="komono-badge" title="重量≤1kg かつ 曲げ長さ<300mm のとき曲げ回数×数量で工賃を試算">小物対応</span>
     </div>
     <div class="main">
       <div class="left">
@@ -201,11 +203,11 @@
             <div class="row"><label>横</label><input type="number" id="yoko" value="" min="0" step="any" placeholder="mm" class="no-spin"><span class="unit">mm</span></div>
             <div class="row"><label>余長</label><input type="number" id="yocho" value="" min="0" step="0.1" placeholder="板厚で自動" class="no-spin"><span class="unit">mm</span></div>
           </div>
-          <div class="computed">重量 <span id="computed-weight">—</span> kg　長さ <span id="computed-length">—</span> mm</div>
+          <div class="computed">重量 <span id="computed-weight" class="wt-val">—</span> kg　長さ <span id="computed-length">—</span> mm</div>
         </div>
         <div class="card">
           <h2>入力 <button type="button" class="mem-btn" id="mem-btn-input" title="形状・数量・オプションを記憶。F2リセットを押しても復元されます。緑＝記憶中">★ 記憶</button></h2>
-          <p class="note" style="margin-bottom:4px;">重量・曲げ長さは寸法から自動計算。直接入力で上書きも可（寸法を変えるとリセット）。<strong>重量≤1kg かつ 曲げ長さ≤300mm</strong>のとき自動で小物扱いになり、曲げ回数と数量で工賃を計算します。</p>
+          <p class="note" style="margin-bottom:4px;">重量・曲げ長さは寸法から自動計算。直接入力で上書きも可（寸法を変えるとリセット）。<strong>重量≤1kg かつ 曲げ長さ<300mm</strong>のとき自動で小物扱いになり、曲げ回数と数量で工賃を計算します。</p>
           <div id="komono-wrap" style="display:none;">
             <p class="note" style="margin:0 0 6px 0;">数量は下の「数量」欄を使用。曲げ回数ごとの基準単価に数量係数（1〜4個×1.5、5〜19個×1.0、20個〜×0.8）をかけます。</p>
             <div class="row">
@@ -216,7 +218,7 @@
           </div>
           <div class="grid2">
             <div class="row"><label>形状</label>
-              <select id="shape">
+              <select id="shape" style="width:95px;">
                 <option value="">—</option>
                 <option value="L曲げ">L曲げ</option>
                 <option value="Z曲げ">Z曲げ</option>
@@ -1053,9 +1055,9 @@
     return { weight: wt, length: len };
   }
 
-  /** 重量≤1kg かつ 曲げ長さ≤300mm のとき小物とみなす（小物割引と同じ条件） */
+  /** 重量≤1kg かつ 曲げ長さ<300mm のとき小物とみなす（300mm以上は通常価格表の最小列〜835mmを使用） */
   function isKomonoByDimensions(wt, len){
-    return (wt > 0 && len > 0 && wt <= 1.0 && len <= 300);
+    return (wt > 0 && len > 0 && wt <= 1.0 && len < 300);
   }
 
   /** 小物：曲げ回数 → 1個あたり基準単価(円)。編集は ref エリアの表で可能 */
@@ -1089,14 +1091,18 @@
 
   function calc(){
     var dim = calcFromDimensions();
+    var wtEl = $('weight');
     if(dim){
       $('computed-weight').textContent = dim.weight.toFixed(2);
       $('computed-length').textContent = Math.round(dim.length);
-      if(!override.weight) $('weight').value = dim.weight;
+      if(!override.weight){
+        if(wtEl){ wtEl.value = dim.weight.toFixed(2); wtEl.classList.add('weight-auto'); }
+      }
       if(!override.length) $('length').value = Math.round(dim.length);
     } else {
       $('computed-weight').textContent = '—';
       $('computed-length').textContent = '—';
+      if(!override.weight && wtEl) wtEl.classList.remove('weight-auto');
     }
     var wt = parseFloat(($('weight')&&$('weight').value)||0)||0;
     var len = parseFloat(($('length')&&$('length').value)||0)||0;
@@ -1339,7 +1345,7 @@
     // 曲げ長さソース（W/L）切り替え
     var lsEl=$('length-source'); if(lsEl){ lsEl.addEventListener('change',function(){ override.length=false; calc(); }); }
     // 重量・曲げ長さを直接入力したら手動上書きフラグON
-    var wtEl=$('weight'); if(wtEl){ wtEl.addEventListener('input',function(){ override.weight=true; calc(); }); wtEl.addEventListener('change',function(){ override.weight=true; calc(); }); }
+    var wtEl=$('weight'); if(wtEl){ wtEl.addEventListener('input',function(){ override.weight=true; wtEl.classList.remove('weight-auto'); calc(); }); wtEl.addEventListener('change',function(){ override.weight=true; wtEl.classList.remove('weight-auto'); calc(); }); }
     var lnEl=$('length'); if(lnEl){ lnEl.addEventListener('input',function(){ override.length=true; calc(); }); lnEl.addEventListener('change',function(){ override.length=true; calc(); }); }
     // 小物：曲げ回数変更で再計算
     var komonoBendEl = $('komono-bend-count');
