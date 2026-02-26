@@ -234,7 +234,7 @@
           <div class="computed">重量 <span id="computed-weight" class="wt-val">—</span> kg</div>
         </div>
         <div class="card">
-          <h2>入力 <button type="button" class="mem-btn" id="mem-btn-input" title="形状・数量・オプションを記憶。F2リセットを押しても復元されます。緑＝記憶中">★ 記憶</button><div id="komono-active-banner" class="komono-active-banner">⚠ 小物モード</div></h2>
+          <h2>入力<div id="komono-active-banner" class="komono-active-banner">⚠ 小物モード</div></h2>
           <div style="display:flex; gap:16px; flex-wrap:wrap; margin-bottom:6px;">
             <details><summary style="font-size:11px;color:#aaa;cursor:pointer;user-select:none;">計算方法・小物判定について</summary><p class="note" style="margin:4px 0 0 8px;">重量・曲げ長さは寸法から自動計算。直接入力で上書きも可（寸法を変えるとリセット）。<strong>重量≤5kg かつ 曲げ長さ≤835mm</strong>のとき自動で小物扱いになり、曲げ回数と数量で工賃を計算します。</p></details>
             <details><summary style="font-size:11px;color:#aaa;cursor:pointer;user-select:none;">数量・係数の考え方について</summary><p class="note" style="margin:4px 0 0 8px;">数量は下の「数量」欄を使用。曲げ回数ごとの基準単価に数量係数（1〜4個×1.5、5〜19個×1.0、20個〜×0.8）をかけます。</p></details>
@@ -249,7 +249,7 @@
           <!-- 形状：全幅で確保しインライン曲げ回数を保証 -->
           <div class="row" style="margin-bottom:6px;">
             <label style="width:auto; margin-right:8px; white-space:nowrap;">形状</label>
-            <select id="shape" style="width:95px;">
+            <select id="shape" style="width:170px;">
               <option value="">—</option>
               <option value="L曲げ">L曲げ</option>
               <option value="Z曲げ">Z曲げ</option>
@@ -274,7 +274,7 @@
           <!-- 数量（常時全幅） -->
           <div class="row"><label style="width:auto; margin-right:6px; white-space:nowrap; flex-shrink:0;">数量</label><input type="number" id="qty" value="1" min="1" step="1" style="width:80px;"><span class="unit">個</span></div>
           <div class="opts" id="opts-section">
-            <span class="opt-ttl">オプション</span>
+            <span class="opt-ttl" style="display:flex;align-items:center;gap:8px;">オプション <button type="button" class="mem-btn" id="mem-btn-input" title="オプションの数値・ON/OFFを記憶。F2リセットを押しても復元されます。緑＝記憶中">★ 記憶</button></span>
             <label><input type="checkbox" id="opt-use-qty-factor" checked> 数量係数を反映する</label>
             <label><input type="checkbox" id="opt-nakagoshi"> 中押し<select id="opt-nakagoshi-type" class="opt-type"><option value="mult">×</option><option value="add">+</option></select><input type="number" id="opt-nakagoshi-val" value="1.5" min="0" step="0.1" style="width:50px;" class="no-spin"><span id="opt-nakagoshi-unit" class="opt-unit" style="display:none;">円</span></label>
             <label><input type="checkbox" id="opt-reverse"> 逆曲げ<select id="opt-reverse-type" class="opt-type"><option value="mult">×</option><option value="add">+</option></select><input type="number" id="opt-reverse-val" value="1.2" min="0" step="0.1" style="width:50px;" class="no-spin"><span id="opt-reverse-unit" class="opt-unit" style="display:none;">円</span></label>
@@ -1621,7 +1621,7 @@
     var okBtn = $('customer-modal-ok');
     var cancelBtn = $('customer-modal-cancel');
     var overlay = $('customer-modal-overlay');
-    if(refBtn) refBtn.addEventListener('click', function(){ openCustomerModal(false); });
+    if(refBtn) refBtn.addEventListener('click', function(){ openCustomerModal(true); });
     if(nameEl) nameEl.addEventListener('click', function(){ openCustomerModal(true); });
     if(noEl){
       function syncNameFromNo(){
@@ -2506,8 +2506,9 @@
       calc();
       updateMemBtnState();
     }
-    if(sr.data.input){
+    if(sr.data.input && localStorage.getItem(INPUT_MEM_KEY)){
       try { localStorage.setItem(INPUT_MEM_KEY, JSON.stringify(sr.data.input)); } catch(e){}
+      restoreInputMemory();
       updateMemBtnState();
     }
   }
@@ -2620,7 +2621,7 @@
     var lbl = btn.querySelector('.sc-label');
     if(resetUndoStack.length){
       btn.classList.remove('sc-disabled');
-      if(lbl) lbl.textContent = '元に戻す（' + resetUndoStack.length + '）';
+      if(lbl) lbl.textContent = '元に戻す';
     } else {
       btn.classList.add('sc-disabled');
       if(lbl) lbl.textContent = '元に戻す';
@@ -2654,6 +2655,14 @@
 
     // 結果パネルを即クリア
     clearResultPanel();
+
+    // 材質を通常鋼板にリセット（選択肢も更新）
+    var matEl = $('material');
+    if(matEl) {
+      matEl.value = 'normal';
+      updateSelectOptions($('thickness'), NORMAL_THICKNESS_OPTIONS);
+      updateSelectOptions($('shape'), NORMAL_SHAPE_OPTIONS);
+    }
 
     // 寸法は常にクリア
     $('thickness').value = '';
@@ -2720,8 +2729,9 @@
 
     setupToggle(bi, saveInputMemory);
     setupToggle(bq, saveQfMemory);
-    // ページロード時は入力欄を空白で開始（形状・数量などは復元しない）
-    // 数量係数は価格設定のため復元する
+    // ★記憶済みならオプション値を復元、未記憶ならHTMLデフォルト値のまま
+    restoreInputMemory();
+    // 数量係数は価格設定のため常に復元する
     restoreQfMemory();
     calc();
     updateMemBtnState();
