@@ -277,13 +277,14 @@
           <!-- 数量（常時全幅） -->
           <div class="row"><label style="width:auto; margin-right:6px; white-space:nowrap; flex-shrink:0;">数量</label><input type="number" id="qty" value="1" min="1" step="1" style="width:80px;"><span class="unit">個</span></div>
           <div class="opts" id="opts-section">
-            <span class="opt-ttl" style="display:flex;align-items:center;gap:8px;">オプション <button type="button" class="mem-btn" id="mem-btn-input" title="オプションの数値・ON/OFFを記憶。F2リセットを押しても復元されます。緑＝記憶中">★ 記憶</button></span>
+            <span class="opt-ttl">オプション</span>
             <label><input type="checkbox" id="opt-use-qty-factor"> 数量係数を反映する</label>
             <label><input type="checkbox" id="opt-nakagoshi"> 中押し<select id="opt-nakagoshi-type" class="opt-type"><option value="mult">×</option><option value="add">+</option></select><input type="number" id="opt-nakagoshi-val" value="1.5" min="0" step="0.1" style="width:50px;" class="no-spin"><span id="opt-nakagoshi-unit" class="opt-unit" style="display:none;">円</span></label>
             <label><input type="checkbox" id="opt-reverse"> 逆曲げ<select id="opt-reverse-type" class="opt-type"><option value="mult">×</option><option value="add">+</option></select><input type="number" id="opt-reverse-val" value="1.2" min="0" step="0.1" style="width:50px;" class="no-spin"><span id="opt-reverse-unit" class="opt-unit" style="display:none;">円</span></label>
             <label><input type="checkbox" id="opt-long-meoshi"> 長尺目押し<select id="opt-long-meoshi-type" class="opt-type"><option value="add">+</option><option value="mult">×</option></select><input type="number" id="opt-long-meoshi-val" value="2500" min="0" step="1" style="width:56px;" class="no-spin"><span id="opt-long-meoshi-unit" class="opt-unit">円</span></label>
             <label><input type="checkbox" id="opt-fukabori"> ブロック<select id="opt-fukabori-type" class="opt-type"><option value="add">+</option><option value="mult">×</option></select><input type="number" id="opt-fukabori-val" value="3000" min="0" step="1" style="width:56px;" class="no-spin"><span id="opt-fukabori-unit" class="opt-unit">円</span></label>
             <label><input type="checkbox" id="opt-hazeri"> ハゼ折<select id="opt-hazeri-type" class="opt-type"><option value="add">+</option><option value="mult">×</option></select><input type="number" id="opt-hazeri-val" value="2000" min="0" step="1" style="width:56px;" class="no-spin"><span id="opt-hazeri-unit" class="opt-unit">円</span></label>
+            <div style="margin-top:4px;"><button type="button" class="mem-btn" id="mem-btn-input" title="オプションの数値・ON/OFFを記憶。F2リセットを押しても復元されます。緑＝記憶中">★ 記憶</button></div>
           </div>
           <div class="ref-qty" id="ref-qty-note" style="margin-top:8px;">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
