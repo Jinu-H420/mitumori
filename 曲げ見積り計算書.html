@@ -2532,7 +2532,7 @@
       lengthSource:    $('length-source')    ? $('length-source').value    : 'W',
       bendCount:       $('bend-count')       ? $('bend-count').value       : '4',
       komonoBendCount: $('komono-bend-count')      ? $('komono-bend-count').value      : '4',
-      optUseQtyFactor: !!($('opt-use-qty-factor')  && $('opt-use-qty-factor').checked),
+      // optUseQtyFactor は記憶しない（常にデフォルトOFF）
       optNakagoshi:    !!($('opt-nakagoshi')        && $('opt-nakagoshi').checked),
       nakagoshiFactor: $('opt-nakagoshi-val')        ? $('opt-nakagoshi-val').value     : '1.5',
       nakagoshiType:   $('opt-nakagoshi-type')       ? $('opt-nakagoshi-type').value    : 'mult',
@@ -2630,7 +2630,7 @@
       if($('length-source'))    $('length-source').value                = d.lengthSource    || 'W';
       if($('bend-count'))       $('bend-count').value                   = d.bendCount       || '4';
       if($('komono-bend-count')) $('komono-bend-count').value           = d.komonoBendCount || '4';
-      if($('opt-use-qty-factor')) $('opt-use-qty-factor').checked       = !!d.optUseQtyFactor;
+      // opt-use-qty-factor は記憶から復元しない（常にデフォルトOFF）
       if($('opt-nakagoshi'))       $('opt-nakagoshi').checked            = !!d.optNakagoshi;
       if($('opt-nakagoshi-val'))   $('opt-nakagoshi-val').value         = d.nakagoshiFactor || '1.5';
       if($('opt-nakagoshi-type'))  $('opt-nakagoshi-type').value        = d.nakagoshiType   || 'mult';
