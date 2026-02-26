@@ -2627,13 +2627,7 @@
     if(!resetUndoStack.length) return;
     var s = resetUndoStack[0]; // 最初の状態に一気に戻る
     resetUndoStack = [];
-    var ids = ['thickness','tate','yoko','yocho','shape','qty','weight','length','length-source','bend-count',
-               'komono-bend-count','opt-nakagoshi-val','opt-reverse-val','opt-long-meoshi-val','opt-fukabori-val','opt-hazeri-val',
-               'opt-nakagoshi-type','opt-reverse-type','opt-long-meoshi-type','opt-fukabori-type','opt-hazeri-type'];
-    var checks = ['opt-use-qty-factor','komono-opt-use-qty-factor','opt-nakagoshi','opt-reverse','opt-long-meoshi','opt-fukabori','opt-hazeri'];
-    ids.forEach(function(id){ var el=$(id); if(el&&s[id]!=null) el.value=s[id]; });
-    checks.forEach(function(id){ var el=$(id); if(el&&s[id]!=null) el.checked=s[id]; });
-    // 材質を復元（板厚・形状の選択肢も合わせて更新）
+    // 材質を先に復元して選択肢を更新（後でセットする値が選択肢に存在するようにする）
     var matEl = $('material');
     if(matEl && s['material'] != null){
       matEl.value = s['material'];
@@ -2641,6 +2635,13 @@
       updateSelectOptions($('thickness'), isChp ? SHIMA_THICKNESS_OPTIONS : NORMAL_THICKNESS_OPTIONS);
       updateSelectOptions($('shape'),     isChp ? SHIMA_SHAPE_OPTIONS     : NORMAL_SHAPE_OPTIONS);
     }
+    // 選択肢が揃った後で値を復元
+    var ids = ['thickness','tate','yoko','yocho','shape','qty','weight','length','length-source','bend-count',
+               'komono-bend-count','opt-nakagoshi-val','opt-reverse-val','opt-long-meoshi-val','opt-fukabori-val','opt-hazeri-val',
+               'opt-nakagoshi-type','opt-reverse-type','opt-long-meoshi-type','opt-fukabori-type','opt-hazeri-type'];
+    var checks = ['opt-use-qty-factor','komono-opt-use-qty-factor','opt-nakagoshi','opt-reverse','opt-long-meoshi','opt-fukabori','opt-hazeri'];
+    ids.forEach(function(id){ var el=$(id); if(el&&s[id]!=null) el.value=s[id]; });
+    checks.forEach(function(id){ var el=$(id); if(el&&s[id]!=null) el.checked=s[id]; });
     override.weight = !!s['_ov_weight'];
     override.length = !!s['_ov_length'];
     updateUndoBtn();
