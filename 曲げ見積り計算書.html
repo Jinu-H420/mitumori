@@ -2593,6 +2593,8 @@
     var s = {};
     ids.forEach(function(id){ var el=$(id); if(el) s[id]=el.value; });
     checks.forEach(function(id){ var el=$(id); if(el) s[id]=el.checked; });
+    // 材質も保存
+    var matEl = $('material'); if(matEl) s['material'] = matEl.value;
     // override フラグも保存
     s['_ov_weight'] = override.weight;
     s['_ov_length'] = override.length;
@@ -2609,6 +2611,14 @@
     var checks = ['opt-use-qty-factor','komono-opt-use-qty-factor','opt-nakagoshi','opt-reverse','opt-long-meoshi','opt-fukabori'];
     ids.forEach(function(id){ var el=$(id); if(el&&s[id]!=null) el.value=s[id]; });
     checks.forEach(function(id){ var el=$(id); if(el&&s[id]!=null) el.checked=s[id]; });
+    // 材質を復元（板厚・形状の選択肢も合わせて更新）
+    var matEl = $('material');
+    if(matEl && s['material'] != null){
+      matEl.value = s['material'];
+      var isChp = (s['material'] === 'shima');
+      updateSelectOptions($('thickness'), isChp ? SHIMA_THICKNESS_OPTIONS : NORMAL_THICKNESS_OPTIONS);
+      updateSelectOptions($('shape'),     isChp ? SHIMA_SHAPE_OPTIONS     : NORMAL_SHAPE_OPTIONS);
+    }
     override.weight = !!s['_ov_weight'];
     override.length = !!s['_ov_length'];
     updateUndoBtn();
