@@ -280,6 +280,7 @@
             <label><input type="checkbox" id="opt-reverse"> 逆曲げ<select id="opt-reverse-type" class="opt-type"><option value="mult">×</option><option value="add">+</option></select><input type="number" id="opt-reverse-val" value="1.2" min="0" step="0.1" style="width:50px;" class="no-spin"><span id="opt-reverse-unit" class="opt-unit" style="display:none;">円</span></label>
             <label><input type="checkbox" id="opt-long-meoshi"> 長尺目押し<select id="opt-long-meoshi-type" class="opt-type"><option value="add">+</option><option value="mult">×</option></select><input type="number" id="opt-long-meoshi-val" value="2500" min="0" step="1" style="width:56px;" class="no-spin"><span id="opt-long-meoshi-unit" class="opt-unit">円</span></label>
             <label><input type="checkbox" id="opt-fukabori"> 深曲げ<select id="opt-fukabori-type" class="opt-type"><option value="add">+</option><option value="mult">×</option></select><input type="number" id="opt-fukabori-val" value="3000" min="0" step="1" style="width:56px;" class="no-spin"><span id="opt-fukabori-unit" class="opt-unit">円</span></label>
+            <label><input type="checkbox" id="opt-hazeri"> ハゼ折<select id="opt-hazeri-type" class="opt-type"><option value="add">+</option><option value="mult">×</option></select><input type="number" id="opt-hazeri-val" value="2000" min="0" step="1" style="width:56px;" class="no-spin"><span id="opt-hazeri-unit" class="opt-unit">円</span></label>
           </div>
           <div class="ref-qty" id="ref-qty-note" style="margin-top:8px;">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
@@ -347,6 +348,7 @@
               <tr><th>逆曲げ</th><td id="out-reverse" class="num">—</td></tr>
               <tr><th>長尺目押し</th><td id="out-long" class="num">—</td></tr>
               <tr><th>深曲げ</th><td id="out-fuka" class="num">—</td></tr>
+              <tr><th>ハゼ折</th><td id="out-hazeri" class="num">—</td></tr>
               <tr class="total"><th>曲げ工賃 合計（税抜）</th><td id="out-total" class="num">—</td></tr>
             </table>
           </div>
@@ -1275,6 +1277,7 @@
       $('out-reverse').textContent = '—';
       $('out-long').textContent = '—';
       $('out-fuka').textContent = '—';
+      $('out-hazeri').textContent = '—';
       $('out-total').textContent = fmt(displayTotal) + ' 円';
       // 形状バッジ更新（小物モード）
       var sibK=$('shape-info-badge'); var sbdK=$('shape-bends-disp'); var sbasK=$('shape-base-disp');
@@ -1344,6 +1347,7 @@
       $('out-reverse').textContent = '—';
       $('out-long').textContent = '—';
       $('out-fuka').textContent = '—';
+      $('out-hazeri').textContent = '—';
       $('out-total').textContent = '—';
       updateRefTable(-1, -1);
       return;
@@ -1390,6 +1394,7 @@
     var optRev = $('opt-reverse')&&$('opt-reverse').checked;
     var optLong = ($('opt-long-meoshi')&&$('opt-long-meoshi').checked) && (len>=1000);
     var optFuka = $('opt-fukabori')&&$('opt-fukabori').checked;
+    var optHaze = $('opt-hazeri')&&$('opt-hazeri').checked;
 
     var nakaType = ($('opt-nakagoshi-type')&&$('opt-nakagoshi-type').value)||'mult';
     var nakaVal  = parseFloat(($('opt-nakagoshi-val')&&$('opt-nakagoshi-val').value))||1.5;
@@ -1399,6 +1404,8 @@
     var longVal  = parseFloat(($('opt-long-meoshi-val')&&$('opt-long-meoshi-val').value))||2500;
     var fukaType = ($('opt-fukabori-type')&&$('opt-fukabori-type').value)||'add';
     var fukaVal  = parseFloat(($('opt-fukabori-val')&&$('opt-fukabori-val').value))||3000;
+    var hazeType = ($('opt-hazeri-type')&&$('opt-hazeri-type').value)||'add';
+    var hazeVal  = parseFloat(($('opt-hazeri-val')&&$('opt-hazeri-val').value))||2000;
 
     updateOptUnits();
 
@@ -1412,6 +1419,8 @@
     if(optLong){ if(longType==='mult'){ vLong=Math.round(v*longVal)-v; v=Math.round(v*longVal); } else { vLong=Math.round(longVal); v+=vLong; } }
     var vFuka = 0;
     if(optFuka){ if(fukaType==='mult'){ vFuka=Math.round(v*fukaVal)-v; v=Math.round(v*fukaVal); } else { vFuka=Math.round(fukaVal); v+=vFuka; } }
+    var vHaze = 0;
+    if(optHaze){ if(hazeType==='mult'){ vHaze=Math.round(v*hazeVal)-v; v=Math.round(v*hazeVal); } else { vHaze=Math.round(hazeVal); v+=vHaze; } }
 
     $('out-base').textContent = fmt(base) + ' 円';
     $('out-qtyF').textContent = useQtyFactor ? String(qtyF) : '1（反映なし）';
@@ -1420,6 +1429,7 @@
     $('out-reverse').textContent = optRev ? (revType==='mult' ? fmt(vRev)+'→'+fmt(vAfterRev)+' 円' : '+'+fmt(Math.round(revVal))+' 円') : '—';
     $('out-long').textContent = optLong ? '+'+fmt(vLong)+' 円' : '—';
     $('out-fuka').textContent = optFuka ? '+'+fmt(vFuka)+' 円' : '—';
+    $('out-hazeri').textContent = optHaze ? '+'+fmt(vHaze)+' 円' : '—';
     $('out-total').textContent = fmt(v) + ' 円';
     // 形状バッジ更新（通常モード）
     var sibN=$('shape-info-badge'); var sbdN=$('shape-bends-disp'); var sbasN=$('shape-base-disp');
@@ -1431,7 +1441,7 @@
   }
 
   function updateOptUnits(){
-    [['nakagoshi','mult'],['reverse','mult'],['long-meoshi','add'],['fukabori','add']].forEach(function(pair){
+    [['nakagoshi','mult'],['reverse','mult'],['long-meoshi','add'],['fukabori','add'],['hazeri','add']].forEach(function(pair){
       var name = pair[0], defType = pair[1];
       var typeEl = $('opt-'+name+'-type');
       var unitEl = $('opt-'+name+'-unit');
@@ -1532,7 +1542,7 @@
     // その他
     var ids = ['shape','qty','bend-count'];
     for(var i=0;i<ids.length;i++){ var el=$(ids[i]); if(el){ el.addEventListener('input',calc); el.addEventListener('change',calc); } }
-    var opts = document.querySelectorAll('#opt-use-qty-factor,#opt-nakagoshi,#opt-reverse,#opt-long-meoshi,#opt-fukabori,#opt-nakagoshi-val,#opt-reverse-val,#opt-long-meoshi-val,#opt-fukabori-val,#opt-nakagoshi-type,#opt-reverse-type,#opt-long-meoshi-type,#opt-fukabori-type');
+    var opts = document.querySelectorAll('#opt-use-qty-factor,#opt-nakagoshi,#opt-reverse,#opt-long-meoshi,#opt-fukabori,#opt-hazeri,#opt-nakagoshi-val,#opt-reverse-val,#opt-long-meoshi-val,#opt-fukabori-val,#opt-hazeri-val,#opt-nakagoshi-type,#opt-reverse-type,#opt-long-meoshi-type,#opt-fukabori-type,#opt-hazeri-type');
     for(var j=0;j<opts.length;j++){ opts[j].addEventListener('change',calc); }
     updateOptUnits();
     // 数量係数テーブルの入力変更
@@ -1829,7 +1839,10 @@
           longMeoshiType:  ($('opt-long-meoshi-type') && $('opt-long-meoshi-type').value) || 'add',
           deep:            !!($('opt-fukabori') && $('opt-fukabori').checked),
           fukaboriAdd:     parseFloat(($('opt-fukabori-val') && $('opt-fukabori-val').value) || '3000'),
-          fukaboriType:    ($('opt-fukabori-type') && $('opt-fukabori-type').value) || 'add'
+          fukaboriType:    ($('opt-fukabori-type') && $('opt-fukabori-type').value) || 'add',
+          hazeri:          !!($('opt-hazeri') && $('opt-hazeri').checked),
+          hazeriAdd:       parseFloat(($('opt-hazeri-val') && $('opt-hazeri-val').value) || '2000'),
+          hazeriType:      ($('opt-hazeri-type') && $('opt-hazeri-type').value) || 'add'
         }
       },
       calculated: calculated,
@@ -2022,6 +2035,9 @@
     if($('opt-fukabori'))        $('opt-fukabori').checked        = !!opts.deep;
     if($('opt-fukabori-val')     && opts.fukaboriAdd     != null) $('opt-fukabori-val').value     = String(opts.fukaboriAdd);
     if($('opt-fukabori-type')    && opts.fukaboriType    != null) $('opt-fukabori-type').value    = opts.fukaboriType;
+    if($('opt-hazeri'))          $('opt-hazeri').checked          = !!opts.hazeri;
+    if($('opt-hazeri-val')       && opts.hazeriAdd       != null) $('opt-hazeri-val').value       = String(opts.hazeriAdd);
+    if($('opt-hazeri-type')      && opts.hazeriType      != null) $('opt-hazeri-type').value      = opts.hazeriType;
     updateOptUnits();
 
     // 数量係数テーブル
@@ -2107,9 +2123,9 @@
     override.weight = savedOvW;
     override.length = savedOvL;
     var ids = ['thickness','tate','yoko','yocho','shape','qty','weight','length','length-source','bend-count',
-               'opt-nakagoshi-val','opt-reverse-val','opt-long-meoshi-val','opt-fukabori-val',
-               'opt-nakagoshi-type','opt-reverse-type','opt-long-meoshi-type','opt-fukabori-type'];
-    var checks = ['opt-use-qty-factor','komono-opt-use-qty-factor','opt-nakagoshi','opt-reverse','opt-long-meoshi','opt-fukabori'];
+               'opt-nakagoshi-val','opt-reverse-val','opt-long-meoshi-val','opt-fukabori-val','opt-hazeri-val',
+               'opt-nakagoshi-type','opt-reverse-type','opt-long-meoshi-type','opt-fukabori-type','opt-hazeri-type'];
+    var checks = ['opt-use-qty-factor','komono-opt-use-qty-factor','opt-nakagoshi','opt-reverse','opt-long-meoshi','opt-fukabori','opt-hazeri'];
     ids.forEach(function(id){ var el=$(id); if(el && saved[id] != null) el.value = saved[id]; });
     checks.forEach(function(id){ var el=$(id); if(el && saved[id] != null) el.checked = !!saved[id]; });
     updateOptUnits();
@@ -2465,7 +2481,10 @@
       longMeoshiType:  $('opt-long-meoshi-type')     ? $('opt-long-meoshi-type').value  : 'add',
       optFukabori:     !!($('opt-fukabori')         && $('opt-fukabori').checked),
       fukaboriAdd:     $('opt-fukabori-val')         ? $('opt-fukabori-val').value      : '3000',
-      fukaboriType:    $('opt-fukabori-type')        ? $('opt-fukabori-type').value     : 'add'
+      fukaboriType:    $('opt-fukabori-type')        ? $('opt-fukabori-type').value     : 'add',
+      optHazeri:       !!($('opt-hazeri')           && $('opt-hazeri').checked),
+      hazeriAdd:       $('opt-hazeri-val')           ? $('opt-hazeri-val').value        : '2000',
+      hazeriType:      $('opt-hazeri-type')          ? $('opt-hazeri-type').value       : 'add'
     };
     try { localStorage.setItem(INPUT_MEM_KEY, JSON.stringify(d)); } catch(e){}
     updateMemBtnState();
@@ -2552,6 +2571,9 @@
       if($('opt-fukabori'))        $('opt-fukabori').checked            = !!d.optFukabori;
       if($('opt-fukabori-val'))    $('opt-fukabori-val').value          = d.fukaboriAdd     || '3000';
       if($('opt-fukabori-type'))   $('opt-fukabori-type').value         = d.fukaboriType    || 'add';
+      if($('opt-hazeri'))          $('opt-hazeri').checked              = !!d.optHazeri;
+      if($('opt-hazeri-val'))      $('opt-hazeri-val').value            = d.hazeriAdd       || '2000';
+      if($('opt-hazeri-type'))     $('opt-hazeri-type').value           = d.hazeriType      || 'add';
       updateOptUnits();
       return true;
     } catch(e){ return false; }
@@ -2587,9 +2609,9 @@
 
   function captureInputState(){
     var ids = ['thickness','tate','yoko','yocho','shape','qty','weight','length','length-source','bend-count',
-               'komono-bend-count','opt-nakagoshi-val','opt-reverse-val','opt-long-meoshi-val','opt-fukabori-val',
-               'opt-nakagoshi-type','opt-reverse-type','opt-long-meoshi-type','opt-fukabori-type'];
-    var checks = ['opt-use-qty-factor','komono-opt-use-qty-factor','opt-nakagoshi','opt-reverse','opt-long-meoshi','opt-fukabori'];
+               'komono-bend-count','opt-nakagoshi-val','opt-reverse-val','opt-long-meoshi-val','opt-fukabori-val','opt-hazeri-val',
+               'opt-nakagoshi-type','opt-reverse-type','opt-long-meoshi-type','opt-fukabori-type','opt-hazeri-type'];
+    var checks = ['opt-use-qty-factor','komono-opt-use-qty-factor','opt-nakagoshi','opt-reverse','opt-long-meoshi','opt-fukabori','opt-hazeri'];
     var s = {};
     ids.forEach(function(id){ var el=$(id); if(el) s[id]=el.value; });
     checks.forEach(function(id){ var el=$(id); if(el) s[id]=el.checked; });
@@ -2606,9 +2628,9 @@
     var s = resetUndoStack[0]; // 最初の状態に一気に戻る
     resetUndoStack = [];
     var ids = ['thickness','tate','yoko','yocho','shape','qty','weight','length','length-source','bend-count',
-               'komono-bend-count','opt-nakagoshi-val','opt-reverse-val','opt-long-meoshi-val','opt-fukabori-val',
-               'opt-nakagoshi-type','opt-reverse-type','opt-long-meoshi-type','opt-fukabori-type'];
-    var checks = ['opt-use-qty-factor','komono-opt-use-qty-factor','opt-nakagoshi','opt-reverse','opt-long-meoshi','opt-fukabori'];
+               'komono-bend-count','opt-nakagoshi-val','opt-reverse-val','opt-long-meoshi-val','opt-fukabori-val','opt-hazeri-val',
+               'opt-nakagoshi-type','opt-reverse-type','opt-long-meoshi-type','opt-fukabori-type','opt-hazeri-type'];
+    var checks = ['opt-use-qty-factor','komono-opt-use-qty-factor','opt-nakagoshi','opt-reverse','opt-long-meoshi','opt-fukabori','opt-hazeri'];
     ids.forEach(function(id){ var el=$(id); if(el&&s[id]!=null) el.value=s[id]; });
     checks.forEach(function(id){ var el=$(id); if(el&&s[id]!=null) el.checked=s[id]; });
     // 材質を復元（板厚・形状の選択肢も合わせて更新）
@@ -2640,7 +2662,7 @@
 
   function clearResultPanel(){
     ['out-base','out-qtyF','out-afterQty',
-     'out-nakagoshi','out-reverse','out-long','out-fuka','out-total',
+     'out-nakagoshi','out-reverse','out-long','out-fuka','out-hazeri','out-total',
      'out-ref-shape','out-weight-band','out-len-band',
      'out-table-price','out-bend-adj'].forEach(function(id){
       var el=$(id); if(el) el.textContent='—';
@@ -2689,17 +2711,19 @@
     if($('bend-count'))     $('bend-count').value     = '4';
     if($('opt-use-qty-factor'))       $('opt-use-qty-factor').checked       = true;
     if($('komono-opt-use-qty-factor')) $('komono-opt-use-qty-factor').checked = true;
-    ['opt-nakagoshi','opt-reverse','opt-long-meoshi','opt-fukabori'].forEach(function(id){
+    ['opt-nakagoshi','opt-reverse','opt-long-meoshi','opt-fukabori','opt-hazeri'].forEach(function(id){
       var el = $(id); if(el) el.checked = false;
     });
     if($('opt-nakagoshi-val'))     $('opt-nakagoshi-val').value     = '1.5';
     if($('opt-reverse-val'))       $('opt-reverse-val').value       = '1.2';
     if($('opt-long-meoshi-val'))   $('opt-long-meoshi-val').value   = '2500';
     if($('opt-fukabori-val'))      $('opt-fukabori-val').value      = '3000';
+    if($('opt-hazeri-val'))        $('opt-hazeri-val').value        = '2000';
     if($('opt-nakagoshi-type'))    $('opt-nakagoshi-type').value    = 'mult';
     if($('opt-reverse-type'))      $('opt-reverse-type').value      = 'mult';
     if($('opt-long-meoshi-type'))  $('opt-long-meoshi-type').value  = 'add';
     if($('opt-fukabori-type'))     $('opt-fukabori-type').value     = 'add';
+    if($('opt-hazeri-type'))       $('opt-hazeri-type').value       = 'add';
     updateOptUnits();
 
     // 数量係数：記憶があれば復元、なければデフォルト
