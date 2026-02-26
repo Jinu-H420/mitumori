@@ -282,7 +282,7 @@
             <label><input type="checkbox" id="opt-nakagoshi"> 中押し<select id="opt-nakagoshi-type" class="opt-type"><option value="mult">×</option><option value="add">+</option></select><input type="number" id="opt-nakagoshi-val" value="1.5" min="0" step="0.1" style="width:50px;" class="no-spin"><span id="opt-nakagoshi-unit" class="opt-unit" style="display:none;">円</span></label>
             <label><input type="checkbox" id="opt-reverse"> 逆曲げ<select id="opt-reverse-type" class="opt-type"><option value="mult">×</option><option value="add">+</option></select><input type="number" id="opt-reverse-val" value="1.2" min="0" step="0.1" style="width:50px;" class="no-spin"><span id="opt-reverse-unit" class="opt-unit" style="display:none;">円</span></label>
             <label><input type="checkbox" id="opt-long-meoshi"> 長尺目押し<select id="opt-long-meoshi-type" class="opt-type"><option value="add">+</option><option value="mult">×</option></select><input type="number" id="opt-long-meoshi-val" value="2500" min="0" step="1" style="width:56px;" class="no-spin"><span id="opt-long-meoshi-unit" class="opt-unit">円</span></label>
-            <label><input type="checkbox" id="opt-fukabori"> 深曲げ<select id="opt-fukabori-type" class="opt-type"><option value="add">+</option><option value="mult">×</option></select><input type="number" id="opt-fukabori-val" value="3000" min="0" step="1" style="width:56px;" class="no-spin"><span id="opt-fukabori-unit" class="opt-unit">円</span></label>
+            <label><input type="checkbox" id="opt-fukabori"> ブロック<select id="opt-fukabori-type" class="opt-type"><option value="add">+</option><option value="mult">×</option></select><input type="number" id="opt-fukabori-val" value="3000" min="0" step="1" style="width:56px;" class="no-spin"><span id="opt-fukabori-unit" class="opt-unit">円</span></label>
             <label><input type="checkbox" id="opt-hazeri"> ハゼ折<select id="opt-hazeri-type" class="opt-type"><option value="add">+</option><option value="mult">×</option></select><input type="number" id="opt-hazeri-val" value="2000" min="0" step="1" style="width:56px;" class="no-spin"><span id="opt-hazeri-unit" class="opt-unit">円</span></label>
           </div>
           <div class="ref-qty" id="ref-qty-note" style="margin-top:8px;">
@@ -350,7 +350,7 @@
               <tr><th>中押し</th><td id="out-nakagoshi" class="num">—</td></tr>
               <tr><th>逆曲げ</th><td id="out-reverse" class="num">—</td></tr>
               <tr><th>長尺目押し</th><td id="out-long" class="num">—</td></tr>
-              <tr><th>深曲げ</th><td id="out-fuka" class="num">—</td></tr>
+              <tr><th>ブロック</th><td id="out-fuka" class="num">—</td></tr>
               <tr><th>ハゼ折</th><td id="out-hazeri" class="num">—</td></tr>
               <tr class="total"><th>曲げ工賃 合計（税抜）</th><td id="out-total" class="num">—</td></tr>
             </table>
@@ -1934,7 +1934,7 @@
     if(opts.nakagoshi)  parts.push('中押し×' + (opts.nakagoshiFactor != null ? opts.nakagoshiFactor : '1.5'));
     if(opts.reverse)    parts.push('逆曲げ×' + (opts.reverseFactor   != null ? opts.reverseFactor   : '1.2'));
     if(opts.longPress)  parts.push('長尺+'    + (opts.longMeoshiAdd   != null ? opts.longMeoshiAdd   : '2500'));
-    if(opts.deep)       parts.push('深曲げ+'  + (opts.fukaboriAdd     != null ? opts.fukaboriAdd     : '3000'));
+    if(opts.deep)       parts.push('ブロック+'  + (opts.fukaboriAdd     != null ? opts.fukaboriAdd     : '3000'));
     return parts.length ? parts.join(', ') : '—';
   }
 
@@ -2231,7 +2231,7 @@
     }
     var header = ['ID','日時','板厚','縦L','横W','余長','形状','曲げ回数','数量','重量','曲げ長さ',
       '数量係数','数量係数_閾値1','数量係数_閾値2','数量係数_F1','数量係数_F2','数量係数_F3',
-      '中押し','中押し係数','逆曲げ','逆曲げ係数','長尺目押し','長尺目押し額','深曲げ','深曲げ額',
+      '中押し','中押し係数','逆曲げ','逆曲げ係数','長尺目押し','長尺目押し額','ブロック','ブロック額',
       '計算値','実績値','差額','差額率(%)','得意先No','得意先名','伝票番号','メモ'];
     var rows = [header.join(',')];
     for(var i=0; i<records.length; i++){
