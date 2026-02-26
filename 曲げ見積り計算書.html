@@ -243,6 +243,9 @@
             <div class="opts" style="margin-top:0; margin-bottom:4px;">
               <span class="opt-ttl">オプション</span>
               <label><input type="checkbox" id="komono-opt-use-qty-factor" checked> 数量係数を反映する</label>
+              <label><input type="checkbox" id="komono-opt-nakagoshi"> 中押し<select id="komono-opt-nakagoshi-type" class="opt-type"><option value="mult">×</option><option value="add">+</option></select><input type="number" id="komono-opt-nakagoshi-val" value="1.5" min="0" step="0.1" style="width:50px;" class="no-spin"><span id="komono-opt-nakagoshi-unit" class="opt-unit" style="display:none;">円</span></label>
+              <label><input type="checkbox" id="komono-opt-reverse"> 逆曲げ<select id="komono-opt-reverse-type" class="opt-type"><option value="mult">×</option><option value="add">+</option></select><input type="number" id="komono-opt-reverse-val" value="1.2" min="0" step="0.1" style="width:50px;" class="no-spin"><span id="komono-opt-reverse-unit" class="opt-unit" style="display:none;">円</span></label>
+              <label><input type="checkbox" id="komono-opt-hazeri"> ハゼ折<select id="komono-opt-hazeri-type" class="opt-type"><option value="add">+</option><option value="mult">×</option></select><input type="number" id="komono-opt-hazeri-val" value="2000" min="0" step="1" style="width:56px;" class="no-spin"><span id="komono-opt-hazeri-unit" class="opt-unit">円</span></label>
             </div>
           </div>
           <input type="hidden" id="weight">
@@ -1257,13 +1260,32 @@
       var useKomonoQtyF = !($('komono-opt-use-qty-factor') && !$('komono-opt-use-qty-factor').checked);
       var qtyF = useKomonoQtyF ? qtyFactor(qty) : 1;
       var unitAfterQty = baseUnit * qtyF;
-      var total = Math.max(300, Math.round(unitAfterQty));
+      var kv = Math.max(300, Math.round(unitAfterQty));
+      // 小物オプション適用
+      var kOptNaka = $('komono-opt-nakagoshi') && $('komono-opt-nakagoshi').checked;
+      var kNakaType = ($('komono-opt-nakagoshi-type') && $('komono-opt-nakagoshi-type').value) || 'mult';
+      var kNakaVal  = parseFloat(($('komono-opt-nakagoshi-val') && $('komono-opt-nakagoshi-val').value)) || 1.5;
+      var kOptRev  = $('komono-opt-reverse') && $('komono-opt-reverse').checked;
+      var kRevType = ($('komono-opt-reverse-type') && $('komono-opt-reverse-type').value) || 'mult';
+      var kRevVal  = parseFloat(($('komono-opt-reverse-val') && $('komono-opt-reverse-val').value)) || 1.2;
+      var kOptHaze = $('komono-opt-hazeri') && $('komono-opt-hazeri').checked;
+      var kHazeType = ($('komono-opt-hazeri-type') && $('komono-opt-hazeri-type').value) || 'add';
+      var kHazeVal  = parseFloat(($('komono-opt-hazeri-val') && $('komono-opt-hazeri-val').value)) || 2000;
+      var kvNaka = kv;
+      if(kOptNaka){ kv = kNakaType==='mult' ? Math.round(kv*kNakaVal) : kv+Math.round(kNakaVal); }
+      var kvAfterNaka = kv;
+      var kvRev = kv;
+      if(kOptRev){ kv = kRevType==='mult' ? Math.round(kv*kRevVal) : kv+Math.round(kRevVal); }
+      var kvAfterRev = kv;
+      var kvHaze = 0;
+      if(kOptHaze){ if(kHazeType==='mult'){ kvHaze=Math.round(kv*kHazeVal)-kv; kv=Math.round(kv*kHazeVal); } else { kvHaze=Math.round(kHazeVal); kv+=kvHaze; } }
+      var total = kv;
       var totalInput = $('komono-total-input');
       if(totalInput){ totalInput.value = total; }
       var displayTotal = total;
       if(totalInput && totalInput.value !== ''){
-        var v = parseInt(String(totalInput.value).replace(/[^0-9-]/g, ''), 10);
-        if(!isNaN(v) && v >= 0) displayTotal = v;
+        var dv = parseInt(String(totalInput.value).replace(/[^0-9-]/g, ''), 10);
+        if(!isNaN(dv) && dv >= 0) displayTotal = dv;
       }
       if($('out-ref-shape'))    $('out-ref-shape').textContent    = '小物（曲げ' + bendCount + '回）';
       if($('out-weight-band'))  $('out-weight-band').textContent  = '—';
@@ -1273,11 +1295,11 @@
       $('out-base').textContent = fmt(baseUnit) + ' 円（1個あたり）';
       $('out-qtyF').textContent = String(qtyF);
       $('out-afterQty').textContent = fmt(Math.round(unitAfterQty)) + ' 円（1個あたり）';
-      $('out-nakagoshi').textContent = '—';
-      $('out-reverse').textContent = '—';
+      $('out-nakagoshi').textContent = kOptNaka ? (kNakaType==='mult' ? fmt(kvNaka)+'→'+fmt(kvAfterNaka)+' 円' : '+'+fmt(Math.round(kNakaVal))+' 円') : '—';
+      $('out-reverse').textContent   = kOptRev  ? (kRevType==='mult'  ? fmt(kvRev)+'→'+fmt(kvAfterRev)+' 円'   : '+'+fmt(Math.round(kRevVal))+' 円')  : '—';
       $('out-long').textContent = '—';
       $('out-fuka').textContent = '—';
-      $('out-hazeri').textContent = '—';
+      $('out-hazeri').textContent = kOptHaze ? '+'+fmt(kvHaze)+' 円' : '—';
       $('out-total').textContent = fmt(displayTotal) + ' 円';
       // 形状バッジ更新（小物モード）
       var sibK=$('shape-info-badge'); var sbdK=$('shape-bends-disp'); var sbasK=$('shape-base-disp');
@@ -1441,12 +1463,18 @@
   }
 
   function updateOptUnits(){
-    [['nakagoshi','mult'],['reverse','mult'],['long-meoshi','add'],['fukabori','add'],['hazeri','add']].forEach(function(pair){
-      var name = pair[0], defType = pair[1];
-      var typeEl = $('opt-'+name+'-type');
-      var unitEl = $('opt-'+name+'-unit');
+    [['opt-nakagoshi-type','opt-nakagoshi-unit','mult'],
+     ['opt-reverse-type','opt-reverse-unit','mult'],
+     ['opt-long-meoshi-type','opt-long-meoshi-unit','add'],
+     ['opt-fukabori-type','opt-fukabori-unit','add'],
+     ['opt-hazeri-type','opt-hazeri-unit','add'],
+     ['komono-opt-nakagoshi-type','komono-opt-nakagoshi-unit','mult'],
+     ['komono-opt-reverse-type','komono-opt-reverse-unit','mult'],
+     ['komono-opt-hazeri-type','komono-opt-hazeri-unit','add']
+    ].forEach(function(pair){
+      var typeEl = $(pair[0]), unitEl = $(pair[1]);
       if(!unitEl) return;
-      var isAdd = typeEl ? typeEl.value === 'add' : defType === 'add';
+      var isAdd = typeEl ? typeEl.value === 'add' : pair[2] === 'add';
       unitEl.style.display = isAdd ? '' : 'none';
     });
   }
@@ -1527,6 +1555,11 @@
     if(komonoBendEl){ komonoBendEl.addEventListener('change', calc); komonoBendEl.addEventListener('input', calc); }
     var komonoQtyFactorEl = $('komono-opt-use-qty-factor');
     if(komonoQtyFactorEl){ komonoQtyFactorEl.addEventListener('change', calc); }
+    ['komono-opt-nakagoshi','komono-opt-reverse','komono-opt-hazeri',
+     'komono-opt-nakagoshi-val','komono-opt-reverse-val','komono-opt-hazeri-val',
+     'komono-opt-nakagoshi-type','komono-opt-reverse-type','komono-opt-hazeri-type'].forEach(function(id){
+      var el=$(id); if(el) el.addEventListener('change', calc);
+    });
     // 小物：工賃を直接変更したときに右側の合計表示を更新
     var komonoTotalInput = $('komono-total-input');
     if(komonoTotalInput){
@@ -1842,7 +1875,16 @@
           fukaboriType:    ($('opt-fukabori-type') && $('opt-fukabori-type').value) || 'add',
           hazeri:          !!($('opt-hazeri') && $('opt-hazeri').checked),
           hazeriAdd:       parseFloat(($('opt-hazeri-val') && $('opt-hazeri-val').value) || '2000'),
-          hazeriType:      ($('opt-hazeri-type') && $('opt-hazeri-type').value) || 'add'
+          hazeriType:      ($('opt-hazeri-type') && $('opt-hazeri-type').value) || 'add',
+          kNakagoshi:      !!($('komono-opt-nakagoshi') && $('komono-opt-nakagoshi').checked),
+          kNakagoshiAdd:   parseFloat(($('komono-opt-nakagoshi-val') && $('komono-opt-nakagoshi-val').value) || '1.5'),
+          kNakagoshiType:  ($('komono-opt-nakagoshi-type') && $('komono-opt-nakagoshi-type').value) || 'mult',
+          kReverse:        !!($('komono-opt-reverse') && $('komono-opt-reverse').checked),
+          kReverseAdd:     parseFloat(($('komono-opt-reverse-val') && $('komono-opt-reverse-val').value) || '1.2'),
+          kReverseType:    ($('komono-opt-reverse-type') && $('komono-opt-reverse-type').value) || 'mult',
+          kHazeri:         !!($('komono-opt-hazeri') && $('komono-opt-hazeri').checked),
+          kHazeriAdd:      parseFloat(($('komono-opt-hazeri-val') && $('komono-opt-hazeri-val').value) || '2000'),
+          kHazeriType:     ($('komono-opt-hazeri-type') && $('komono-opt-hazeri-type').value) || 'add'
         }
       },
       calculated: calculated,
@@ -2038,6 +2080,15 @@
     if($('opt-hazeri'))          $('opt-hazeri').checked          = !!opts.hazeri;
     if($('opt-hazeri-val')       && opts.hazeriAdd       != null) $('opt-hazeri-val').value       = String(opts.hazeriAdd);
     if($('opt-hazeri-type')      && opts.hazeriType      != null) $('opt-hazeri-type').value      = opts.hazeriType;
+    if($('komono-opt-nakagoshi')      ) $('komono-opt-nakagoshi').checked      = !!opts.kNakagoshi;
+    if($('komono-opt-nakagoshi-val')  && opts.kNakagoshiAdd  != null) $('komono-opt-nakagoshi-val').value  = String(opts.kNakagoshiAdd);
+    if($('komono-opt-nakagoshi-type') && opts.kNakagoshiType != null) $('komono-opt-nakagoshi-type').value = opts.kNakagoshiType;
+    if($('komono-opt-reverse')        ) $('komono-opt-reverse').checked        = !!opts.kReverse;
+    if($('komono-opt-reverse-val')    && opts.kReverseAdd    != null) $('komono-opt-reverse-val').value    = String(opts.kReverseAdd);
+    if($('komono-opt-reverse-type')   && opts.kReverseType   != null) $('komono-opt-reverse-type').value   = opts.kReverseType;
+    if($('komono-opt-hazeri')         ) $('komono-opt-hazeri').checked         = !!opts.kHazeri;
+    if($('komono-opt-hazeri-val')     && opts.kHazeriAdd     != null) $('komono-opt-hazeri-val').value     = String(opts.kHazeriAdd);
+    if($('komono-opt-hazeri-type')    && opts.kHazeriType    != null) $('komono-opt-hazeri-type').value    = opts.kHazeriType;
     updateOptUnits();
 
     // 数量係数テーブル
@@ -2107,6 +2158,18 @@
       if($('opt-fukabori'))        $('opt-fukabori').checked        = !!opts.deep;
       if($('opt-fukabori-val')     && opts.fukaboriAdd     != null) $('opt-fukabori-val').value     = String(opts.fukaboriAdd);
       if($('opt-fukabori-type')    && opts.fukaboriType    != null) $('opt-fukabori-type').value    = opts.fukaboriType;
+      if($('opt-hazeri'))          $('opt-hazeri').checked          = !!opts.hazeri;
+      if($('opt-hazeri-val')       && opts.hazeriAdd       != null) $('opt-hazeri-val').value       = String(opts.hazeriAdd);
+      if($('opt-hazeri-type')      && opts.hazeriType      != null) $('opt-hazeri-type').value      = opts.hazeriType;
+      if($('komono-opt-nakagoshi')      ) $('komono-opt-nakagoshi').checked      = !!opts.kNakagoshi;
+      if($('komono-opt-nakagoshi-val')  && opts.kNakagoshiAdd  != null) $('komono-opt-nakagoshi-val').value  = String(opts.kNakagoshiAdd);
+      if($('komono-opt-nakagoshi-type') && opts.kNakagoshiType != null) $('komono-opt-nakagoshi-type').value = opts.kNakagoshiType;
+      if($('komono-opt-reverse')        ) $('komono-opt-reverse').checked        = !!opts.kReverse;
+      if($('komono-opt-reverse-val')    && opts.kReverseAdd    != null) $('komono-opt-reverse-val').value    = String(opts.kReverseAdd);
+      if($('komono-opt-reverse-type')   && opts.kReverseType   != null) $('komono-opt-reverse-type').value   = opts.kReverseType;
+      if($('komono-opt-hazeri')         ) $('komono-opt-hazeri').checked         = !!opts.kHazeri;
+      if($('komono-opt-hazeri-val')     && opts.kHazeriAdd     != null) $('komono-opt-hazeri-val').value     = String(opts.kHazeriAdd);
+      if($('komono-opt-hazeri-type')    && opts.kHazeriType    != null) $('komono-opt-hazeri-type').value    = opts.kHazeriType;
 
       calc();
 
@@ -2484,7 +2547,16 @@
       fukaboriType:    $('opt-fukabori-type')        ? $('opt-fukabori-type').value     : 'add',
       optHazeri:       !!($('opt-hazeri')           && $('opt-hazeri').checked),
       hazeriAdd:       $('opt-hazeri-val')           ? $('opt-hazeri-val').value        : '2000',
-      hazeriType:      $('opt-hazeri-type')          ? $('opt-hazeri-type').value       : 'add'
+      hazeriType:      $('opt-hazeri-type')          ? $('opt-hazeri-type').value       : 'add',
+      kOptNakagoshi:   !!($('komono-opt-nakagoshi') && $('komono-opt-nakagoshi').checked),
+      kNakagoshiAdd:   $('komono-opt-nakagoshi-val') ? $('komono-opt-nakagoshi-val').value : '1.5',
+      kNakagoshiType:  $('komono-opt-nakagoshi-type')? $('komono-opt-nakagoshi-type').value: 'mult',
+      kOptReverse:     !!($('komono-opt-reverse')   && $('komono-opt-reverse').checked),
+      kReverseAdd:     $('komono-opt-reverse-val')   ? $('komono-opt-reverse-val').value  : '1.2',
+      kReverseType:    $('komono-opt-reverse-type')  ? $('komono-opt-reverse-type').value : 'mult',
+      kOptHazeri:      !!($('komono-opt-hazeri')    && $('komono-opt-hazeri').checked),
+      kHazeriAdd:      $('komono-opt-hazeri-val')    ? $('komono-opt-hazeri-val').value   : '2000',
+      kHazeriType:     $('komono-opt-hazeri-type')   ? $('komono-opt-hazeri-type').value  : 'add'
     };
     try { localStorage.setItem(INPUT_MEM_KEY, JSON.stringify(d)); } catch(e){}
     updateMemBtnState();
@@ -2571,9 +2643,18 @@
       if($('opt-fukabori'))        $('opt-fukabori').checked            = !!d.optFukabori;
       if($('opt-fukabori-val'))    $('opt-fukabori-val').value          = d.fukaboriAdd     || '3000';
       if($('opt-fukabori-type'))   $('opt-fukabori-type').value         = d.fukaboriType    || 'add';
-      if($('opt-hazeri'))          $('opt-hazeri').checked              = !!d.optHazeri;
-      if($('opt-hazeri-val'))      $('opt-hazeri-val').value            = d.hazeriAdd       || '2000';
-      if($('opt-hazeri-type'))     $('opt-hazeri-type').value           = d.hazeriType      || 'add';
+      if($('opt-hazeri'))               $('opt-hazeri').checked               = !!d.optHazeri;
+      if($('opt-hazeri-val'))           $('opt-hazeri-val').value             = d.hazeriAdd       || '2000';
+      if($('opt-hazeri-type'))          $('opt-hazeri-type').value            = d.hazeriType      || 'add';
+      if($('komono-opt-nakagoshi'))      $('komono-opt-nakagoshi').checked     = !!d.kOptNakagoshi;
+      if($('komono-opt-nakagoshi-val'))  $('komono-opt-nakagoshi-val').value   = d.kNakagoshiAdd  || '1.5';
+      if($('komono-opt-nakagoshi-type')) $('komono-opt-nakagoshi-type').value  = d.kNakagoshiType || 'mult';
+      if($('komono-opt-reverse'))        $('komono-opt-reverse').checked       = !!d.kOptReverse;
+      if($('komono-opt-reverse-val'))    $('komono-opt-reverse-val').value     = d.kReverseAdd    || '1.2';
+      if($('komono-opt-reverse-type'))   $('komono-opt-reverse-type').value    = d.kReverseType   || 'mult';
+      if($('komono-opt-hazeri'))         $('komono-opt-hazeri').checked        = !!d.kOptHazeri;
+      if($('komono-opt-hazeri-val'))     $('komono-opt-hazeri-val').value      = d.kHazeriAdd     || '2000';
+      if($('komono-opt-hazeri-type'))    $('komono-opt-hazeri-type').value     = d.kHazeriType    || 'add';
       updateOptUnits();
       return true;
     } catch(e){ return false; }
@@ -2610,8 +2691,11 @@
   function captureInputState(){
     var ids = ['thickness','tate','yoko','yocho','shape','qty','weight','length','length-source','bend-count',
                'komono-bend-count','opt-nakagoshi-val','opt-reverse-val','opt-long-meoshi-val','opt-fukabori-val','opt-hazeri-val',
-               'opt-nakagoshi-type','opt-reverse-type','opt-long-meoshi-type','opt-fukabori-type','opt-hazeri-type'];
-    var checks = ['opt-use-qty-factor','komono-opt-use-qty-factor','opt-nakagoshi','opt-reverse','opt-long-meoshi','opt-fukabori','opt-hazeri'];
+               'opt-nakagoshi-type','opt-reverse-type','opt-long-meoshi-type','opt-fukabori-type','opt-hazeri-type',
+               'komono-opt-nakagoshi-val','komono-opt-reverse-val','komono-opt-hazeri-val',
+               'komono-opt-nakagoshi-type','komono-opt-reverse-type','komono-opt-hazeri-type'];
+    var checks = ['opt-use-qty-factor','komono-opt-use-qty-factor','opt-nakagoshi','opt-reverse','opt-long-meoshi','opt-fukabori','opt-hazeri',
+                  'komono-opt-nakagoshi','komono-opt-reverse','komono-opt-hazeri'];
     var s = {};
     ids.forEach(function(id){ var el=$(id); if(el) s[id]=el.value; });
     checks.forEach(function(id){ var el=$(id); if(el) s[id]=el.checked; });
@@ -2638,8 +2722,11 @@
     // 選択肢が揃った後で値を復元
     var ids = ['thickness','tate','yoko','yocho','shape','qty','weight','length','length-source','bend-count',
                'komono-bend-count','opt-nakagoshi-val','opt-reverse-val','opt-long-meoshi-val','opt-fukabori-val','opt-hazeri-val',
-               'opt-nakagoshi-type','opt-reverse-type','opt-long-meoshi-type','opt-fukabori-type','opt-hazeri-type'];
-    var checks = ['opt-use-qty-factor','komono-opt-use-qty-factor','opt-nakagoshi','opt-reverse','opt-long-meoshi','opt-fukabori','opt-hazeri'];
+               'opt-nakagoshi-type','opt-reverse-type','opt-long-meoshi-type','opt-fukabori-type','opt-hazeri-type',
+               'komono-opt-nakagoshi-val','komono-opt-reverse-val','komono-opt-hazeri-val',
+               'komono-opt-nakagoshi-type','komono-opt-reverse-type','komono-opt-hazeri-type'];
+    var checks = ['opt-use-qty-factor','komono-opt-use-qty-factor','opt-nakagoshi','opt-reverse','opt-long-meoshi','opt-fukabori','opt-hazeri',
+                  'komono-opt-nakagoshi','komono-opt-reverse','komono-opt-hazeri'];
     ids.forEach(function(id){ var el=$(id); if(el&&s[id]!=null) el.value=s[id]; });
     checks.forEach(function(id){ var el=$(id); if(el&&s[id]!=null) el.checked=s[id]; });
     override.weight = !!s['_ov_weight'];
@@ -2712,19 +2799,26 @@
     if($('bend-count'))     $('bend-count').value     = '4';
     if($('opt-use-qty-factor'))       $('opt-use-qty-factor').checked       = true;
     if($('komono-opt-use-qty-factor')) $('komono-opt-use-qty-factor').checked = true;
-    ['opt-nakagoshi','opt-reverse','opt-long-meoshi','opt-fukabori','opt-hazeri'].forEach(function(id){
+    ['opt-nakagoshi','opt-reverse','opt-long-meoshi','opt-fukabori','opt-hazeri',
+     'komono-opt-nakagoshi','komono-opt-reverse','komono-opt-hazeri'].forEach(function(id){
       var el = $(id); if(el) el.checked = false;
     });
     if($('opt-nakagoshi-val'))     $('opt-nakagoshi-val').value     = '1.5';
     if($('opt-reverse-val'))       $('opt-reverse-val').value       = '1.2';
     if($('opt-long-meoshi-val'))   $('opt-long-meoshi-val').value   = '2500';
     if($('opt-fukabori-val'))      $('opt-fukabori-val').value      = '3000';
-    if($('opt-hazeri-val'))        $('opt-hazeri-val').value        = '2000';
+    if($('opt-hazeri-val'))              $('opt-hazeri-val').value              = '2000';
+    if($('komono-opt-nakagoshi-val'))    $('komono-opt-nakagoshi-val').value    = '1.5';
+    if($('komono-opt-reverse-val'))      $('komono-opt-reverse-val').value      = '1.2';
+    if($('komono-opt-hazeri-val'))       $('komono-opt-hazeri-val').value       = '2000';
     if($('opt-nakagoshi-type'))    $('opt-nakagoshi-type').value    = 'mult';
     if($('opt-reverse-type'))      $('opt-reverse-type').value      = 'mult';
     if($('opt-long-meoshi-type'))  $('opt-long-meoshi-type').value  = 'add';
     if($('opt-fukabori-type'))     $('opt-fukabori-type').value     = 'add';
-    if($('opt-hazeri-type'))       $('opt-hazeri-type').value       = 'add';
+    if($('opt-hazeri-type'))             $('opt-hazeri-type').value             = 'add';
+    if($('komono-opt-nakagoshi-type'))   $('komono-opt-nakagoshi-type').value   = 'mult';
+    if($('komono-opt-reverse-type'))     $('komono-opt-reverse-type').value     = 'mult';
+    if($('komono-opt-hazeri-type'))      $('komono-opt-hazeri-type').value      = 'add';
     updateOptUnits();
 
     // 数量係数：記憶があれば復元、なければデフォルト
