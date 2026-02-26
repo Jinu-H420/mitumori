@@ -167,6 +167,7 @@
           JSONインポート
           <input type="file" id="import-file" accept=".json" style="display:none;" onchange="importJSON(event)">
         </label>
+        <button class="btn btn-secondary btn-sm" onclick="restoreSeed()">シードデータ復元</button>
         <button class="btn btn-danger btn-sm" onclick="clearAll()">全件削除</button>
       </div>
     </div>
@@ -213,13 +214,19 @@
 // ===== 定数・初期データ =====
 const STORAGE_KEY = 'jisseki_records_v1';
 
-// 初回起動時のシードデータ（実績メモ.md の NO_527065 を反映）
+// 初回起動時のシードデータ（実績メモ.md・社長見積り・evals参照）
 const SEED = [
   {
     _id: 'seed_1', id: 'NO_527065', date: '', shape: 'ハット曲げ',
     thickness: '6.0', material: 'SS400', length: 396, width: 70, qty: 2,
     actual: 1380, calc: 1350,
     note: '穴4-15φ込み。曲げのみ計算との差額30円/個。実績メモより。'
+  },
+  {
+    _id: 'seed_2', id: '社長見積り_01', date: '', shape: 'ハット曲げ',
+    thickness: '1.6', material: 'SS400', length: 570, width: 40, qty: 1,
+    actual: 1100, calc: 500,
+    note: '社長の実見積り。最小区分・ハット曲げ基本ケース。evals/cases/01参照。'
   }
 ];
 
@@ -456,6 +463,18 @@ function deleteRecord(rid) {
 function clearAll() {
   if (!confirm('全件削除しますか？この操作は元に戻せません。')) return;
   records = []; saveAll(); renderTable();
+}
+
+// シードデータ復元（すでに存在するIDはスキップして追加）
+function restoreSeed() {
+  const existIds = new Set(records.map(r => r._id));
+  const added = [];
+  SEED.forEach(r => {
+    if (!existIds.has(r._id)) { records.push({ ...r }); added.push(r.id || r._id); }
+  });
+  if (added.length === 0) { showMsg('シードデータはすでに存在します', 'ok'); return; }
+  saveAll(); renderTable();
+  showMsg(added.length + '件を復元しました: ' + added.join(', '), 'ok');
 }
 
 // ===== フォーム折りたたみ =====

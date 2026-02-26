@@ -30,11 +30,13 @@
   /* 入力行 */
   .row { display: flex; align-items: center; margin-bottom: 7px; }
   .row label { width: 110px; font-size: 13px; font-weight: 600; color: #333; flex-shrink: 0; }
-  .row input, .row select { flex: 1; padding: 5px 7px; font-size: 13px; border: 1px solid #ccc; border-radius: 4px; max-width: 150px; }
+  .row input { width: 80px; padding: 5px 7px; font-size: 13px; border: 1px solid #ccc; border-radius: 4px; flex-shrink: 0; }
+  .row select { flex: 1; padding: 5px 7px; font-size: 13px; border: 1px solid #ccc; border-radius: 4px; max-width: 200px; }
   .row .unit { font-size: 12px; color: #777; margin-left: 5px; width: 40px; flex-shrink: 0; }
   .row input.ip { background: #FFFDE7; border-color: #E0D97A; }
   .row input.ip:focus { background: #fff; border-color: #2F5496; outline: none; }
   .row select { background: #FFFDE7; }
+  .bends-badge { display: inline-block; font-size: 12px; font-weight: 700; background: #2F5496; color: #fff; border-radius: 10px; padding: 2px 8px; margin-left: 8px; white-space: nowrap; flex-shrink: 0; }
 
   /* 価格サマリーカード */
   .price-summary { display: flex; flex-direction: column; justify-content: space-between; }
@@ -161,7 +163,7 @@
           <div class="row"><label>余長</label><input type="number" id="yocho" value="20" class="ip" step="0.1" min="0"><span class="unit">mm</span><span id="yocho-auto-label" style="font-size:11px;color:#888;margin-left:4px;">(自動)</span></div>
           <div id="yocho-radio-area"></div>
         </div>
-        <div class="row"><label>形状</label><select id="shape"><option value="L曲げ">L曲げ（1回）</option><option value="Z曲げ">Z曲げ（2回）</option><option value="コの字曲げ">コの字曲げ（2回）</option><option value="C型曲げ">C型曲げ（4回）</option><option value="三方曲げ">三方曲げ（3回）</option><option value="四方曲げ">四方曲げ（4回）</option><option value="ハット曲げ">ハット曲げ（4回）</option><option value="手入力">手入力</option></select></div>
+        <div class="row"><label>形状</label><select id="shape"><option value="L曲げ">L曲げ（1回）</option><option value="Z曲げ">Z曲げ（2回）</option><option value="コの字曲げ">コの字曲げ（2回）</option><option value="C型曲げ">C型曲げ（4回）</option><option value="三方曲げ">三方曲げ（3回）</option><option value="四方曲げ">四方曲げ（4回）</option><option value="ハット曲げ">ハット曲げ（4回）</option><option value="手入力">手入力</option></select><span id="shape-bends-badge" class="bends-badge">4回</span></div>
         <div class="row" id="manual-bends-row" style="display:none;"><label>曲げ回数</label><input type="number" id="manual-bends" value="1" class="ip" step="1" min="1"><span class="unit">回</span></div>
         <div class="row"><label>数量</label><input type="number" id="qty" value="1" class="ip" step="1" min="1"><span class="unit">個</span></div>
         <div class="sep"></div>
@@ -589,6 +591,7 @@ function calc(){
 
   const cgr=$('c-group');if(cgr)cgr.textContent=`${g}（t${t}）`;
   const cb=$('c-bends');if(cb)cb.textContent=`${bends}回（${shape}）`;
+  const sbadge=$('shape-bends-badge');if(sbadge)sbadge.textContent=shape==='手入力'?`${bends}回（手入力）`:`${bends}回`;
 
   const cl=$('c-cutlen');if(cl&&ov.cutlen===null)cl.value=Math.round(autoCutLen(ta,yo,yc));
 

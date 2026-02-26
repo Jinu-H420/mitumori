@@ -6,14 +6,14 @@
   <title>曲げ見積り計算書（曲げ工賃のみ・検算用）</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { height: 100%; overflow: auto; }
+    html, body { min-height: 100%; overflow: auto; }
     body { font-family: "Hiragino Sans", "Yu Gothic", sans-serif; background: #f0f2f5; padding: 10px; font-size: 14px; }
-    .container { max-width: 100%; height: 100%; display: flex; flex-direction: column; }
+    .container { max-width: 100%; display: flex; flex-direction: column; }
     .header { flex-shrink: 0; margin-bottom: 8px; }
     h1 { font-size: 18px; color: #2F5496; display: inline; }
     .purpose { font-size: 12px; color: #555; display: inline; margin-left: 10px; }
-    .main { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; flex: 0 1 auto; min-height: 0; }
-    .left { display: flex; flex-direction: column; gap: 6px; min-height: 0; overflow: auto; }
+    .main { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .left { display: flex; flex-direction: column; gap: 6px; }
     .right { min-height: 0; overflow: auto; }
     .card { background: #fff; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.06); padding: 12px; flex-shrink: 0; }
     .card.h-fill { flex: 1; min-height: 0; display: flex; flex-direction: column; }
@@ -51,9 +51,8 @@
     .result-table tr.total th, .result-table tr.total td { border-top: 2px solid #2F5496; padding-top: 6px; font-size: 15px; color: #2F5496; font-weight: 700; }
     .result-table tr.total td.num { font-size: 18px; }
     .note { font-size: 12px; color: #888; margin-top: 4px; }
-    .ref-section { flex-shrink: 0; margin-top: 0; max-height: 42%; min-height: 140px; display: flex; flex-direction: column; overflow: hidden; }
-    .ref-section .card { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-    .ref-section .card-body { overflow: auto; flex: 1; }
+    .ref-section { flex-shrink: 0; margin-top: 0; }
+    .ref-section .card-body { overflow: auto; }
     .ref-table { border-collapse: collapse; font-size: 12px; width: 100%; }
     .ref-table th, .ref-table td { border: 1px solid #ddd; padding: 3px 6px; text-align: right; }
     .ref-table th { background: #D9E1F2; color: #333; }
@@ -110,6 +109,7 @@
     .record-list-table tr:hover { background: #f8f9fa; }
     .gap-positive { color: #dc3545; }
     .gap-negative { color: #28a745; }
+    .record-filter-active { background: #2F5496 !important; color: #fff !important; }
     /* 得意先参照モーダル */
     .customer-modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); z-index: 9998; justify-content: center; align-items: center; }
     .customer-modal-overlay.show { display: flex; }
@@ -155,6 +155,11 @@
     .mem-btn.active:hover { background: #219a52; border-color: #1e8449; }
     /* 小物対応バッジ */
     .komono-badge { display: inline-block; margin-left: 10px; padding: 2px 8px; font-size: 11px; font-weight: 700; color: #2F5496; background: #D9E1F2; border-radius: 4px; vertical-align: middle; }
+    /* 小物モード有効時バナー */
+    .komono-active-banner { display: none; background: #FFF3E0; border: 2px solid #FF9800; border-radius: 6px; padding: 3px 10px; font-size: 12px; font-weight: 700; color: #E65100; white-space: nowrap; margin-left: auto; }
+    .komono-active-banner.show { display: inline-flex; align-items: center; }
+    /* 形状・曲げ回数・基準単価バッジ */
+    .shape-info-badge { display: inline-flex; align-items: center; gap: 4px; margin-left: 10px; padding: 2px 10px; font-size: 12px; font-weight: 700; background: #EEF2FA; border: 1.5px solid #B0BED9; border-radius: 12px; color: #2F5496; flex-shrink: 0; white-space: nowrap; }
     /* 小物モード */
     .komono-mode-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     /* 数量係数アクティブ行 */
@@ -183,7 +188,7 @@
     <div class="header">
       <h1>曲げ見積り計算書</h1>
       <span class="purpose">曲げ工賃のみ・材料費・穴あけなし。寸法入力で重量・長さ自動計算。</span>
-      <span class="komono-badge" title="重量≤1kg かつ 曲げ長さ<300mm のとき曲げ回数×数量で工賃を試算">小物対応</span>
+      <span class="komono-badge" title="重量≤5kg かつ 曲げ長さ≤835mm のとき小物モードで工賃を計算">小物対応</span>
     </div>
     <!-- 通常モードパネル -->
     <div id="panel-normal">
@@ -229,9 +234,9 @@
           <div class="computed">重量 <span id="computed-weight" class="wt-val">—</span> kg</div>
         </div>
         <div class="card">
-          <h2>入力 <button type="button" class="mem-btn" id="mem-btn-input" title="形状・数量・オプションを記憶。F2リセットを押しても復元されます。緑＝記憶中">★ 記憶</button></h2>
+          <h2>入力 <button type="button" class="mem-btn" id="mem-btn-input" title="形状・数量・オプションを記憶。F2リセットを押しても復元されます。緑＝記憶中">★ 記憶</button><div id="komono-active-banner" class="komono-active-banner">⚠ 小物モード</div></h2>
           <div style="display:flex; gap:16px; flex-wrap:wrap; margin-bottom:6px;">
-            <details><summary style="font-size:11px;color:#aaa;cursor:pointer;user-select:none;">計算方法・小物判定について</summary><p class="note" style="margin:4px 0 0 8px;">重量・曲げ長さは寸法から自動計算。直接入力で上書きも可（寸法を変えるとリセット）。<strong>重量≤1kg かつ 曲げ長さ<300mm</strong>のとき自動で小物扱いになり、曲げ回数と数量で工賃を計算します。</p></details>
+            <details><summary style="font-size:11px;color:#aaa;cursor:pointer;user-select:none;">計算方法・小物判定について</summary><p class="note" style="margin:4px 0 0 8px;">重量・曲げ長さは寸法から自動計算。直接入力で上書きも可（寸法を変えるとリセット）。<strong>重量≤5kg かつ 曲げ長さ≤835mm</strong>のとき自動で小物扱いになり、曲げ回数と数量で工賃を計算します。</p></details>
             <details><summary style="font-size:11px;color:#aaa;cursor:pointer;user-select:none;">数量・係数の考え方について</summary><p class="note" style="margin:4px 0 0 8px;">数量は下の「数量」欄を使用。曲げ回数ごとの基準単価に数量係数（1〜4個×1.5、5〜19個×1.0、20個〜×0.8）をかけます。</p></details>
           </div>
           <div id="komono-wrap" style="display:none;">
@@ -259,10 +264,11 @@
               <option value="1">1回</option><option value="2">2回</option><option value="3">3回</option><option value="4" selected>4回</option><option value="5">5回</option><option value="6">6回</option><option value="7">7回</option><option value="8">8回</option>
             </select></span>
             <span id="komono-bend-wrap" style="display:none; margin-left:8px; font-size:12px; color:#333;">曲げ<span id="komono-bend-text" style="margin:0 2px; font-weight:600;">—</span><select id="komono-bend-count" style="display:none; width:62px; font-size:12px; padding:2px 4px; border:1px solid #ccc; border-radius:3px;"><option value="1">1回</option><option value="2">2回</option><option value="3">3回</option><option value="4" selected>4回</option><option value="5">5回</option><option value="6">6回</option><option value="7">7回</option><option value="8">8回</option></select></span>
+            <span id="shape-info-badge" class="shape-info-badge" style="display:none;"><span id="shape-bends-disp">—</span>回 / 基準 <span id="shape-base-disp">—</span>円</span>
           </div>
           <!-- 曲げ長さ | 曲げ工賃（小物時のみ右列） -->
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px 12px; margin-bottom:4px;">
-            <div class="row" style="min-width:0;"><label style="width:auto; margin-right:6px; white-space:nowrap; flex-shrink:0;">曲げ長さ</label><select id="length-source" style="width:62px;font-size:11px;margin-right:4px;"><option value="W">横W</option><option value="L">縦L</option></select><input type="number" id="length" value="" min="0" step="1" placeholder="mm" style="flex:1; min-width:40px;"><span class="unit">mm</span></div>
+            <div class="row" style="min-width:0;"><label style="width:auto; margin-right:6px; white-space:nowrap; flex-shrink:0;">曲げ長さ</label><select id="length-source" style="width:62px;font-size:11px;margin-right:4px;"><option value="W">横W</option><option value="L">縦L</option></select><input type="number" id="length" value="" min="0" step="1" placeholder="mm" style="width:70px;"><span class="unit">mm</span></div>
             <div id="komono-total-row" style="display:none;" class="row"><label style="width:auto; margin-right:6px; white-space:nowrap; flex-shrink:0;">曲げ工賃</label><input type="number" id="komono-total-input" min="0" step="1" placeholder="計算値" class="no-spin" style="width:90px; padding:4px 6px; font-size:13px; border:1px solid #2F5496; border-radius:3px; background:#f0f7ff;"><span class="unit">円</span></div>
           </div>
           <!-- 数量（常時全幅） -->
@@ -305,7 +311,7 @@
         <div class="ref-section">
           <div class="card">
             <h2>選択中の形状：<span id="ref-shape-name">—</span><span id="ref-bend-count-note" style="font-size:11px;color:#555;font-weight:normal;"></span></h2>
-            <details style="margin-bottom:6px;">
+            <details open style="margin-bottom:6px;">
               <summary style="font-size:11px;color:#aaa;cursor:pointer;user-select:none;list-style:none;display:flex;align-items:center;gap:4px;">
                 <span style="font-size:9px;">▶</span> 重量(kg) × 長さ区分 の基準価格表。セルをクリックで直接編集・ブラウザに自動保存。
               </summary>
@@ -497,7 +503,7 @@
     <div class="record-list-section" id="record-list-section" style="display:none;">
       <div class="card">
         <p class="note" id="record-share-notice" style="display:none; margin-bottom:6px; padding:6px 8px; background:#fff3cd; border-radius:4px; font-size:11px;"></p>
-        <h2>実績一覧 <span id="record-count" style="font-size:10px;color:#555;font-weight:normal;"></span></h2>
+        <h2>実績一覧 <span id="record-count" style="font-size:10px;color:#555;font-weight:normal;"></span><span style="margin-left:auto;display:flex;gap:4px;"><button type="button" id="filter-normal-btn" class="btn btn-secondary" style="font-size:11px;padding:2px 10px;">通常鋼板</button><button type="button" id="filter-shima-btn" class="btn btn-secondary" style="font-size:11px;padding:2px 10px;">CHP</button></span></h2>
         <div style="overflow:auto; max-height:300px;">
           <table class="record-list-table">
             <thead>
@@ -1159,9 +1165,9 @@
     return { weight: wt, length: len };
   }
 
-  /** 重量≤1kg かつ 曲げ長さ<300mm のとき小物とみなす（300mm以上は通常価格表の最小列〜835mmを使用） */
+  /** 重量≤5kg かつ 曲げ長さ≤835mm のとき小物とみなす */
   function isKomonoByDimensions(wt, len){
-    return (wt > 0 && len > 0 && wt <= 1.0 && len < 300);
+    return (wt > 0 && len > 0 && wt <= 5.0 && len <= 835);
   }
 
   /** 小物：曲げ回数 → 1個あたり基準単価(円)。編集は ref エリアの表で可能 */
@@ -1224,6 +1230,7 @@
       var rowBa2=$('row-bend-adj');    if(rowBa2) rowBa2.style.display='none';
       var nameEl0=$('ref-shape-name'); if(nameEl0) nameEl0.textContent='—';
       var bodyEl0=$('ref-price-body'); if(bodyEl0) bodyEl0.innerHTML='<tr><td colspan="7" class="text-left" style="color:#888;">形状を選択してください</td></tr>';
+      var sib0=$('shape-info-badge'); if(sib0) sib0.style.display='none';
       updateOptUnits();
       updateQfHighlight();
       return;
@@ -1269,6 +1276,9 @@
       $('out-long').textContent = '—';
       $('out-fuka').textContent = '—';
       $('out-total').textContent = fmt(displayTotal) + ' 円';
+      // 形状バッジ更新（小物モード）
+      var sibK=$('shape-info-badge'); var sbdK=$('shape-bends-disp'); var sbasK=$('shape-base-disp');
+      if(sibK){ sibK.style.display=''; } if(sbdK) sbdK.textContent=bendCount; if(sbasK) sbasK.textContent=fmt(baseUnit);
       var nameEl = $('ref-shape-name'); if(nameEl) nameEl.textContent = '小物（曲げ回数×数量係数）';
       var bodyEl = $('ref-price-body');
       if(bodyEl){
@@ -1321,7 +1331,7 @@
     }
 
     var shima = isShima();
-    var LEN_LABELS = shima ? SHIMA_LENGTH_LABELS : ['〜500mm','〜835mm','〜1670mm','〜2505mm','〜3048mm','3048mm超'];
+    var LEN_LABELS = shima ? SHIMA_LENGTH_LABELS : ['〜835mm','〜1670mm','〜2505mm','〜3048mm','3048mm超'];
     var res = getBase(shape, wt, len);
     if(res.base==null){
       if($('out-ref-shape'))    $('out-ref-shape').textContent    = '—';
@@ -1411,6 +1421,11 @@
     $('out-long').textContent = optLong ? '+'+fmt(vLong)+' 円' : '—';
     $('out-fuka').textContent = optFuka ? '+'+fmt(vFuka)+' 円' : '—';
     $('out-total').textContent = fmt(v) + ' 円';
+    // 形状バッジ更新（通常モード）
+    var sibN=$('shape-info-badge'); var sbdN=$('shape-bends-disp'); var sbasN=$('shape-base-disp');
+    if(sibN){ sibN.style.display=''; }
+    if(sbdN){ sbdN.textContent = (shape==='複数曲げ') ? (($('bend-count')&&$('bend-count').value)||'4') : (shapeBendCount[shape]||'?'); }
+    if(sbasN) sbasN.textContent = fmt(base);
     updateRefTable(res.rowIndex, res.colIndex);
     updateQfHighlight();
   }
@@ -1450,6 +1465,8 @@
     var bcw = $('bend-count-wrap');
     if(show){ if(bcw) bcw.style.display = 'none'; }
     if(!show){ var kw = $('komono-bend-wrap'); if(kw) kw.style.display = 'none'; }
+    var banner = $('komono-active-banner');
+    if(banner) banner.classList.toggle('show', show);
   }
 
   function syncKomonoBendUI(shape){
@@ -1529,7 +1546,7 @@
     if(refBody) refBody.addEventListener('change', onRefCellChange);
     function renderStorageDump(data){
       if(!data || !Array.isArray(data)) return '<p class="note">データがありません</p>';
-      var cols = ['〜500mm','〜835mm','〜1670mm','〜2505mm','〜3048mm','3048mm超'];
+      var cols = ['〜835mm','〜1670mm','〜2505mm','〜3048mm','3048mm超'];
       var html = '';
       var curShape = '';
       for(var i = 0; i < data.length; i++){
@@ -1656,6 +1673,7 @@
   // ===== 実績記録機能 =====
   var RECORDS_STORAGE_KEY = 'bending-estimate-records';
   var RECORDS_CACHE = null;
+  var currentRecordFilter = 'normal'; // 'normal' or 'shima'
 
   function useServerRecords(){
     var p = window.location.protocol;
@@ -1790,6 +1808,7 @@
         quantity: qty,
         weight: weight,
         bendLength: bendLength,
+        material: ($('material') && $('material').value) || 'normal',
         komonoMode: isKomonoByDimensions(weight, bendLength),
         komonoBendCount: ($('komono-bend-count') && $('komono-bend-count').value) || '4',
         options: {
@@ -1874,6 +1893,14 @@
     return '数量係数: 1〜' + t1 + '個×' + f1 + ' / ' + (t1+1) + '〜' + t2 + '個×' + f2 + ' / ' + (t2+1) + '個〜×' + f3;
   }
 
+  // materialフィールドがない旧データ向け：CHP固有形状名（括弧付き・スラッシュ含む）から判定
+  function detectMaterial(inp){
+    if(inp.material) return inp.material;
+    var s = inp.shape || '';
+    if(s.indexOf('（') !== -1 || s.indexOf('/') !== -1) return 'shima';
+    return 'normal';
+  }
+
   function renderRecordList(){
     var records = loadRecords();
     var body = $('record-list-body');
@@ -1882,8 +1909,15 @@
     if(!body) return;
 
     body.innerHTML = '';
-    // 設定エントリは表示・件数から除外
-    var displayRecords = records.filter(function(r){ return r.id !== SETTINGS_RECORD_ID; });
+    // フィルタボタンのアクティブ表示を更新
+    var fnBtn = $('filter-normal-btn'); var fsBtn = $('filter-shima-btn');
+    if(fnBtn) fnBtn.classList.toggle('record-filter-active', currentRecordFilter === 'normal');
+    if(fsBtn) fsBtn.classList.toggle('record-filter-active', currentRecordFilter === 'shima');
+
+    // 設定エントリ除外 + 現在のフィルタ（通常/CHP）で絞り込み
+    var displayRecords = records.filter(function(r){
+      return r.id !== SETTINGS_RECORD_ID && detectMaterial(r.input || {}) === currentRecordFilter;
+    });
     if(displayRecords.length === 0){
       if(emptyMsg) emptyMsg.style.display = 'block';
       if(countEl) countEl.textContent = '';
@@ -1916,7 +1950,7 @@
       var optTitle = optText !== '—' ? ' title="' + (qfTip ? qfTip + '\n' : '') + optText + '"' : '';
       tr.innerHTML =
         '<td>' + formatDate(r.timestamp) + '</td>' +
-        '<td>' + (inp.komonoMode ? '小物' : (inp.shape || '')) + '</td>' +
+        '<td>' + (detectMaterial(inp) === 'shima' ? '<span style="font-size:10px;font-weight:700;background:#1565C0;color:#fff;border-radius:3px;padding:1px 4px;margin-right:3px;">CHP</span>' : '') + (inp.komonoMode ? '小物' : (inp.shape || '')) + '</td>' +
         '<td class="num">' + bendCountDisp + '</td>' +
         '<td>' + dims + '</td>' +
         '<td class="num">' + (inp.quantity || '') + '</td>' +
@@ -1938,6 +1972,16 @@
     if(!r) return;
     var inp = r.input || {};
     var opts = inp.options || {};
+
+    // 材質を先に復元（旧データはdetectMaterialで形状名から判定）
+    var matEl = $('material');
+    if(matEl) {
+      var detectedMat = detectMaterial(inp);
+      matEl.value = detectedMat;
+      var isChp = (detectedMat === 'shima');
+      updateSelectOptions($('thickness'), isChp ? SHIMA_THICKNESS_OPTIONS : NORMAL_THICKNESS_OPTIONS);
+      updateSelectOptions($('shape'), isChp ? SHIMA_SHAPE_OPTIONS : NORMAL_SHAPE_OPTIONS);
+    }
 
     if($('thickness')) $('thickness').value = inp.thickness != null ? String(inp.thickness) : '';
     if($('tate'))      $('tate').value      = inp.lengthL   != null ? String(inp.lengthL)   : '';
@@ -1987,6 +2031,13 @@
     if($('qf-factor2') && opts.qfFactor2 != null) $('qf-factor2').value = String(opts.qfFactor2);
     if($('qf-factor3') && opts.qfFactor3 != null) $('qf-factor3').value = String(opts.qfFactor3);
     updateQfLabels();
+
+    // 実績価格・得意先・伝票番号・メモを復元
+    if($('actual-price') && r.actual   != null) $('actual-price').value  = String(r.actual);
+    if($('customer-no')  && r.customerCode)     $('customer-no').value   = r.customerCode;
+    if($('customer-name')&& r.customerName)     $('customer-name').value = r.customerName;
+    if($('slip-number')  && r.slipNumber)       $('slip-number').value   = r.slipNumber;
+    if($('record-memo')  && r.memo)             $('record-memo').value   = r.memo;
 
     calc();
     window.scrollTo(0, 0);
@@ -2161,11 +2212,17 @@
   var saveBtnEl = $('save-record-btn');
   if(saveBtnEl) saveBtnEl.addEventListener('click', saveRecord);
 
+  var filterNormalBtn = $('filter-normal-btn');
+  if(filterNormalBtn) filterNormalBtn.addEventListener('click', function(){ currentRecordFilter = 'normal'; renderRecordList(); });
+  var filterShimaBtn = $('filter-shima-btn');
+  if(filterShimaBtn) filterShimaBtn.addEventListener('click', function(){ currentRecordFilter = 'shima'; renderRecordList(); });
+
   var toggleBtnEl = $('toggle-records-btn');
   if(toggleBtnEl) toggleBtnEl.addEventListener('click', function(){
     var section = $('record-list-section');
     if(!section) return;
     if(section.style.display === 'none'){
+      currentRecordFilter = isShima() ? 'shima' : 'normal';
       section.style.display = 'block';
       toggleBtnEl.textContent = '実績一覧を閉じる';
       renderRecordList();
