@@ -242,7 +242,7 @@
           <div id="komono-wrap" style="display:none;">
             <div class="opts" style="margin-top:0; margin-bottom:4px;">
               <span class="opt-ttl">オプション</span>
-              <label><input type="checkbox" id="komono-opt-use-qty-factor" checked> 数量係数を反映する</label>
+              <label><input type="checkbox" id="komono-opt-use-qty-factor"> 数量係数を反映する</label>
               <label><input type="checkbox" id="komono-opt-nakagoshi"> 中押し<select id="komono-opt-nakagoshi-type" class="opt-type"><option value="mult">×</option><option value="add">+</option></select><input type="number" id="komono-opt-nakagoshi-val" value="1.5" min="0" step="0.1" style="width:50px;" class="no-spin"><span id="komono-opt-nakagoshi-unit" class="opt-unit" style="display:none;">円</span></label>
               <label><input type="checkbox" id="komono-opt-reverse"> 逆曲げ<select id="komono-opt-reverse-type" class="opt-type"><option value="mult">×</option><option value="add">+</option></select><input type="number" id="komono-opt-reverse-val" value="1.2" min="0" step="0.1" style="width:50px;" class="no-spin"><span id="komono-opt-reverse-unit" class="opt-unit" style="display:none;">円</span></label>
               <label><input type="checkbox" id="komono-opt-hazeri"> ハゼ折<select id="komono-opt-hazeri-type" class="opt-type"><option value="add">+</option><option value="mult">×</option></select><input type="number" id="komono-opt-hazeri-val" value="2000" min="0" step="1" style="width:56px;" class="no-spin"><span id="komono-opt-hazeri-unit" class="opt-unit">円</span></label>
@@ -278,7 +278,7 @@
           <div class="row"><label style="width:auto; margin-right:6px; white-space:nowrap; flex-shrink:0;">数量</label><input type="number" id="qty" value="1" min="1" step="1" style="width:80px;"><span class="unit">個</span></div>
           <div class="opts" id="opts-section">
             <span class="opt-ttl" style="display:flex;align-items:center;gap:8px;">オプション <button type="button" class="mem-btn" id="mem-btn-input" title="オプションの数値・ON/OFFを記憶。F2リセットを押しても復元されます。緑＝記憶中">★ 記憶</button></span>
-            <label><input type="checkbox" id="opt-use-qty-factor" checked> 数量係数を反映する</label>
+            <label><input type="checkbox" id="opt-use-qty-factor"> 数量係数を反映する</label>
             <label><input type="checkbox" id="opt-nakagoshi"> 中押し<select id="opt-nakagoshi-type" class="opt-type"><option value="mult">×</option><option value="add">+</option></select><input type="number" id="opt-nakagoshi-val" value="1.5" min="0" step="0.1" style="width:50px;" class="no-spin"><span id="opt-nakagoshi-unit" class="opt-unit" style="display:none;">円</span></label>
             <label><input type="checkbox" id="opt-reverse"> 逆曲げ<select id="opt-reverse-type" class="opt-type"><option value="mult">×</option><option value="add">+</option></select><input type="number" id="opt-reverse-val" value="1.2" min="0" step="0.1" style="width:50px;" class="no-spin"><span id="opt-reverse-unit" class="opt-unit" style="display:none;">円</span></label>
             <label><input type="checkbox" id="opt-long-meoshi"> 長尺目押し<select id="opt-long-meoshi-type" class="opt-type"><option value="add">+</option><option value="mult">×</option></select><input type="number" id="opt-long-meoshi-val" value="2500" min="0" step="1" style="width:56px;" class="no-spin"><span id="opt-long-meoshi-unit" class="opt-unit">円</span></label>
@@ -2797,8 +2797,8 @@
     if($('weight'))         $('weight').value         = '';
     if($('length'))         $('length').value         = '';
     if($('bend-count'))     $('bend-count').value     = '4';
-    if($('opt-use-qty-factor'))       $('opt-use-qty-factor').checked       = true;
-    if($('komono-opt-use-qty-factor')) $('komono-opt-use-qty-factor').checked = true;
+    if($('opt-use-qty-factor'))       $('opt-use-qty-factor').checked       = false;
+    if($('komono-opt-use-qty-factor')) $('komono-opt-use-qty-factor').checked = false;
     ['opt-nakagoshi','opt-reverse','opt-long-meoshi','opt-fukabori','opt-hazeri',
      'komono-opt-nakagoshi','komono-opt-reverse','komono-opt-hazeri'].forEach(function(id){
       var el = $(id); if(el) el.checked = false;
