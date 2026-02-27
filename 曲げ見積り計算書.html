@@ -181,6 +181,12 @@
       .grid2 { grid-template-columns: 1fr; }
       .grid2 .row label { width: 80px; }
     }
+    /* 小物判定インジケーター */
+    .komono-suggest-row { display:none; align-items:center; gap:8px; margin-bottom:4px; }
+    .komono-suggest-label { display:inline-flex; align-items:center; gap:5px; cursor:pointer; font-size:12px; font-weight:600; padding:3px 12px; border-radius:20px; border:1.5px solid #27ae60; background:#f0fff4; color:#27ae60; transition:background 0.15s,color 0.15s,border-color 0.15s; user-select:none; }
+    .komono-suggest-label:hover { background:#d4f5dd; }
+    .komono-suggest-label input[type="checkbox"] { position:absolute; opacity:0; width:0; height:0; }
+    .komono-suggest-label:has(input[type="checkbox"]:checked) { background:#2F5496; color:#fff; border-color:#2F5496; }
   </style>
 </head>
 <body>
@@ -268,6 +274,11 @@
             </select></span>
             <span id="komono-bend-wrap" style="display:none; margin-left:8px; font-size:12px; color:#333;">曲げ<span id="komono-bend-text" style="margin:0 2px; font-weight:600;">—</span><select id="komono-bend-count" style="display:none; width:62px; font-size:12px; padding:2px 4px; border:1px solid #ccc; border-radius:3px;"><option value="1">1回</option><option value="2">2回</option><option value="3">3回</option><option value="4" selected>4回</option><option value="5">5回</option><option value="6">6回</option><option value="7">7回</option><option value="8">8回</option></select></span>
             <span id="shape-info-badge" class="shape-info-badge" style="display:none;"><span id="shape-bends-disp">—</span>回 / 基準 <span id="shape-base-disp">—</span>円</span>
+          </div>
+          <!-- 小物判定インジケーター -->
+          <div id="komono-suggest-row" class="komono-suggest-row">
+            <span style="font-size:12px; color:#27ae60; font-weight:600;">小物に該当</span>
+            <label class="komono-suggest-label"><input type="checkbox" id="opt-komono-mode" onchange="onKomonoModeChange()">小物モードで計算</label>
           </div>
           <!-- 曲げ長さ | 曲げ工賃（小物時のみ右列） -->
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px 12px; margin-bottom:4px;">
@@ -1223,7 +1234,8 @@
     var wt = parseFloat(($('weight')&&$('weight').value)||0)||0;
     var len = parseFloat(($('length')&&$('length').value)||0)||0;
     var shape = ($('shape')&&$('shape').value)||'';
-    var isKomono = isKomonoByDimensions(wt, len);
+    var komonoOptEl = document.getElementById('opt-komono-mode');
+    var isKomono = !!(komonoOptEl && komonoOptEl.checked);
 
     if(!shape){
       toggleKomonoWrap(false);
@@ -1239,10 +1251,13 @@
       var sib0=$('shape-info-badge'); if(sib0) sib0.style.display='none';
       updateOptUnits();
       updateQfHighlight();
+      var suggestRow0 = $('komono-suggest-row'); if(suggestRow0) suggestRow0.style.display = 'none';
       return;
     }
 
     toggleKomonoWrap(isKomono);
+    var suggestRow = $('komono-suggest-row');
+    if(suggestRow) suggestRow.style.display = (isKomonoByDimensions(wt, len) || isKomono) ? 'flex' : 'none';
 
     if(isKomono){
       var kShape = shape;
@@ -1495,10 +1510,6 @@
   }
 
   function toggleKomonoWrap(show){
-    var wrap = $('komono-wrap');
-    if(wrap) wrap.style.display = show ? '' : 'none';
-    var opts = $('opts-section');
-    if(opts) opts.style.display = show ? 'none' : '';
     var ktr = $('komono-total-row');
     if(ktr) ktr.style.display = show ? '' : 'none';
     var bcw = $('bend-count-wrap');
@@ -3039,6 +3050,11 @@
       renderKomonoMatrix();
     }).catch(function() { renderKomonoMatrix(); });
   })();
+
+  // 小物モード切り替え
+  function onKomonoModeChange() {
+    calc();
+  }
   </script>
   <div id="load-toast"></div>
   <!-- ショートカットバー -->
