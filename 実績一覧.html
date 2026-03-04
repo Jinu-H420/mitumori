@@ -82,6 +82,17 @@
     .ag-suggest.ok   { background: #E8F5E9; color: #2E7D32; }
 
     @media (max-width: 600px) { .form-grid { grid-template-columns: 1fr 1fr; } }
+
+    /* 記録者バー */
+    .brn-bar { font-size: 12px; color: #888; display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+    .brn-bar .brn-name { font-weight: 600; color: #2F5496; }
+    .brn-bar .brn-unset { color: #E65100; font-style: italic; }
+    .brn-bar input { padding: 2px 6px; font-size: 12px; border: 1px solid #ccc; border-radius: 4px; width: 100px; font-family: inherit; }
+    /* 記録者セル */
+    .rec-cell { font-size: 11px; white-space: nowrap; }
+    .rec-mine  { display:inline-block; background:#2F5496; color:#fff; border-radius:10px; padding:1px 7px; font-size:11px; font-weight:600; }
+    .rec-other { display:inline-block; background:#e8e8e8; color:#888; border-radius:10px; padding:1px 7px; font-size:11px; }
+    .rec-none  { color:#ccc; font-size:11px; }
   </style>
 </head>
 <body>
@@ -89,6 +100,16 @@
   <div style="display:flex;align-items:center;gap:14px;margin-bottom:6px;">
     <h1>実績一覧</h1>
     <a href="index.html" class="back">← トップへ</a>
+  </div>
+  <div class="brn-bar">
+    <span class="rec-mine" id="brn-display" style="cursor:default;"></span>
+    <span style="color:#888;">← このPCから登録した実績に自動でマークされます</span>
+    <span id="brn-edit" style="display:none;align-items:center;gap:4px;">
+      <input type="text" id="brn-input" maxlength="20" onkeydown="if(event.key==='Enter')saveBrn()">
+      <button class="btn-icon" style="font-size:11px;" onclick="saveBrn()">保存</button>
+      <button class="btn-icon" style="font-size:11px;" onclick="toggleBrnEdit()">×</button>
+    </span>
+    <button class="btn-icon" style="font-size:10px;color:#bbb;" onclick="toggleBrnEdit()" title="識別名を変更">✎</button>
   </div>
   <p class="subtitle">
     決まった単価を記録して、見積りテーブルを育てる。データはブラウザのローカルストレージに保存されます。<br>
@@ -189,6 +210,7 @@
             <th onclick="setSort('diffRate')" data-col="diffRate" class="r">差額率<span class="arr">↕</span></th>
             <th class="ns">メモ</th>
             <th class="ns">操作</th>
+            <th onclick="setSort('recorder')" data-col="recorder">記録者<span class="arr">↕</span></th>
           </tr>
         </thead>
         <tbody id="jt-body"></tbody>
@@ -213,6 +235,7 @@
 <script>
 // ===== 定数・初期データ =====
 const STORAGE_KEY = 'jisseki_records_v1';
+const BRN_KEY = 'jisseki_browser_name';
 
 // 初回起動時のシードデータ（実績メモ.md・社長見積り・evals参照）
 const SEED = [
@@ -288,7 +311,7 @@ function renderTable() {
 
   const tbody = $('jt-body');
   if (records.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="14" class="empty-msg">データがありません。上のフォームから登録してください。</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="15" class="empty-msg">データがありません。上のフォームから登録してください。</td></tr>';
     $('analysis-card').style.display = 'none';
     return;
   }
@@ -317,6 +340,12 @@ function renderTable() {
         <button class="btn-icon" onclick="editRecord('${r._id}')">編集</button>
         <button class="btn-icon" style="color:#C62828;" onclick="deleteRecord('${r._id}')">削除</button>
       </td>
+      <td class="rec-cell">${
+        !r.recorder ? '<span class="rec-none">—</span>'
+        : r.recorder === getBrn()
+          ? `<span class="rec-mine">このPC</span>`
+          : `<span class="rec-other">${esc(r.recorder)}</span>`
+      }</td>
     </tr>`;
   }).join('');
 
@@ -414,7 +443,7 @@ function saveRecord() {
     editingId = null;
     $('form-title').textContent = '新規登録';
   } else {
-    records.push({ _id: genId(), id, date, shape, thickness, material, length, width, qty, actual, calc, note });
+    records.push({ _id: genId(), id, date, shape, thickness, material, length, width, qty, actual, calc, note, recorder: getBrn() });
   }
   saveAll(); renderTable(); showMsg('保存しました', 'ok');
 }
@@ -501,13 +530,14 @@ function dlBlob(content, mime, filename) {
 
 function exportCSV() {
   if (!records.length) { alert('データがありません'); return; }
-  const hdr = ['案件番号', '日付', '形状', '板厚', '材質', '展開L(mm)', '展開W(mm)', '数量', '実績単価', '計算単価', '差額', '差額率(%)', 'メモ'];
+  const hdr = ['案件番号', '日付', '形状', '板厚', '材質', '展開L(mm)', '展開W(mm)', '数量', '実績単価', '計算単価', '差額', '差額率(%)', 'メモ', '記録者'];
   const rows = records.map(r => {
     const diff = getDiff(r), rate = getDiffRate(r), has = r.actual && r.calc;
     return [r.id || '', r.date || '', r.shape || '', r.thickness || '', r.material || '',
             r.length || '', r.width || '', r.qty || 1, r.actual || '', r.calc || '',
             has ? diff : '', has ? rate.toFixed(1) : '',
-            (r.note || '').replace(/,/g, '、').replace(/\n/g, ' ')].join(',');
+            (r.note || '').replace(/,/g, '、').replace(/\n/g, ' '),
+            r.recorder || ''].join(',');
   });
   dlBlob('\uFEFF' + [hdr.join(','), ...rows].join('\n'), 'text/csv', '実績一覧_' + today() + '.csv');
 }
@@ -538,6 +568,30 @@ function importJSON(e) {
   reader.readAsText(file);
 }
 
+// ===== 記録者バー =====
+function getBrn() { return localStorage.getItem(BRN_KEY) || ''; }
+function initBrn() {
+  if (!getBrn()) {
+    // 初回アクセス時に自動でPC識別コードを生成して保存
+    const code = 'PC-' + Math.random().toString(36).slice(2, 6).toUpperCase();
+    localStorage.setItem(BRN_KEY, code);
+  }
+  $('brn-display').textContent = getBrn();
+}
+function toggleBrnEdit() {
+  const el = $('brn-edit');
+  const open = el.style.display === 'none';
+  el.style.display = open ? 'flex' : 'none';
+  if (open) { $('brn-input').value = getBrn(); $('brn-input').focus(); }
+}
+function saveBrn() {
+  const v = $('brn-input').value.trim();
+  if (!v) { alert('名前を入力してください'); return; }
+  localStorage.setItem(BRN_KEY, v);
+  toggleBrnEdit();
+  $('brn-display').textContent = getBrn();
+}
+
 // ===== 計算書への呼び出し =====
 const LOAD_REQUEST_KEY = 'bending_load_request';
 
@@ -552,6 +606,7 @@ function loadIntoCalc(rid) {
 // ===== 初期化 =====
 loadRecords();
 $('f-date').value = today();
+initBrn();
 renderTable();
 </script>
 </body>

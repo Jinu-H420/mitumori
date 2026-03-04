@@ -537,6 +537,7 @@
                 <th>お客様名</th>
                 <th>伝票番号</th>
                 <th>メモ</th>
+                <th>登録者</th>
                 <th></th>
               </tr>
             </thead>
@@ -1727,7 +1728,18 @@
 
   // ===== 実績記録機能 =====
   var RECORDS_STORAGE_KEY = 'bending-estimate-records';
+  var BROWSER_ID_KEY = 'bending-browser-id';
   var RECORDS_CACHE = null;
+
+  function getBrowserId(){
+    var id = localStorage.getItem(BROWSER_ID_KEY);
+    // 旧形式（PC-XXXX）は番号に置き換える
+    if(!id || id.indexOf('PC-') === 0){
+      id = String(Math.floor(Math.random() * 900) + 100);
+      localStorage.setItem(BROWSER_ID_KEY, id);
+    }
+    return id;
+  }
   var currentRecordFilter = 'normal'; // 'normal' or 'shima'
 
   function useServerRecords(){
@@ -1906,7 +1918,8 @@
       customerCode: customerCode,
       customerName: customerName,
       slipNumber: slipNumber,
-      memo: memo
+      memo: memo,
+      browserId: getBrowserId()
     };
 
     function doSaveRecords(records){
@@ -2028,6 +2041,12 @@
         '<td>' + (r.customerName != null ? r.customerName : '') + '</td>' +
         '<td>' + (r.slipNumber != null ? r.slipNumber : '') + '</td>' +
         '<td>' + (r.memo || '') + '</td>' +
+        (function(){
+          var bid = r.browserId || '';
+          if(!bid) return '<td style="color:#ccc;font-size:11px;">—</td>';
+          var isMine = bid === getBrowserId();
+          return '<td><span style="background:' + (isMine ? '#2F5496;color:#fff' : '#e8e8e8;color:#777') + ';border-radius:10px;padding:1px 8px;font-size:11px;font-weight:' + (isMine ? '600' : 'normal') + ';white-space:nowrap;">' + bid + '</span></td>';
+        })() +
         '<td style="white-space:nowrap;"><button class="btn btn-load" data-load-id="' + r.id + '">読み込む</button> <button class="btn btn-edit" data-edit-id="' + r.id + '">編集</button> <button class="btn btn-danger" data-record-id="' + r.id + '">削除</button></td>';
       body.appendChild(tr);
     }
