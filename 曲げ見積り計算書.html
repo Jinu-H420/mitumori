@@ -103,13 +103,28 @@
     .record-list-section { margin-top: 10px; }
     .record-list-table { width: 100%; border-collapse: collapse; font-size: 13px; }
     .record-list-table th, .record-list-table td { padding: 5px 8px; text-align: left; border-bottom: 1px solid #eee; }
-    .record-list-table th { background: #D9E1F2; color: #333; font-weight: 600; font-size: 12px; }
+    .record-list-table th { background: #D9E1F2; color: #333; font-weight: 600; font-size: 12px; position: sticky; top: 0; z-index: 2; }
+    .record-list-table th.sortable { cursor: pointer; user-select: none; }
+    .record-list-table th.sortable:hover { background: #c5d0eb; }
     .record-list-table td { font-size: 13px; }
     .record-list-table td.num { text-align: right; }
     .record-list-table tr:hover { background: #f8f9fa; }
     .gap-positive { color: #dc3545; }
     .gap-negative { color: #28a745; }
     .record-filter-active { background: #2F5496 !important; color: #fff !important; }
+    /* お客様名コンボボックス */
+    .cust-combo { position: relative; display: inline-flex; }
+    .cust-combo input { padding: 3px 7px; font-size: 12px; border: 1px solid #ccc; border-radius: 4px 0 0 4px; width: 120px; border-right: none; font-family: inherit; }
+    .cust-combo input:focus { outline: none; border-color: #2F5496; }
+    .cust-combo-btn { padding: 3px 7px; font-size: 11px; border: 1px solid #ccc; border-radius: 0 4px 4px 0; background: #f0f0f0; cursor: pointer; color: #555; line-height: 1; }
+    .cust-combo-btn:hover { background: #e0e0e0; }
+    .cust-combo-list { position: absolute; top: 100%; left: 0; min-width: 180px; max-height: 220px; overflow-y: auto; background: #fff; border: 1px solid #ccc; border-radius: 4px; z-index: 3000; box-shadow: 0 3px 10px rgba(0,0,0,0.15); margin-top: 2px; display: none; }
+    .cust-combo-list div { padding: 4px 10px; font-size: 12px; cursor: pointer; white-space: nowrap; }
+    .cust-combo-list div:hover { background: #e8eef7; }
+    .cust-combo-list .cust-combo-empty { color: #999; cursor: default; }
+    .cust-combo-list .cust-combo-empty:hover { background: none; }
+    .cust-combo-list .cust-combo-header { padding: 3px 10px; font-size: 11px; color: #888; background: #f8f8f8; border-bottom: 1px solid #eee; cursor: default; }
+    .cust-combo-list .cust-combo-header:hover { background: #f8f8f8; }
     /* 得意先参照モーダル */
     .customer-modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); z-index: 9998; justify-content: center; align-items: center; }
     .customer-modal-overlay.show { display: flex; }
@@ -521,6 +536,24 @@
       <div class="card">
         <p class="note" id="record-share-notice" style="display:none; margin-bottom:6px; padding:6px 8px; background:#fff3cd; border-radius:4px; font-size:11px;"></p>
         <h2>実績一覧 <span id="record-count" style="font-size:10px;color:#555;font-weight:normal;"></span><span style="margin-left:auto;display:flex;gap:4px;"><button type="button" id="filter-normal-btn" class="btn btn-secondary" style="font-size:11px;padding:2px 10px;">通常鋼板</button><button type="button" id="filter-shima-btn" class="btn btn-secondary" style="font-size:11px;padding:2px 10px;">CHP</button></span></h2>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:8px;font-size:12px;padding:6px 2px;border-bottom:1px solid #e8e8e8;">
+          <span style="color:#555;font-weight:600;white-space:nowrap;">絞り込み:</span>
+          <span class="cust-combo" id="cust-combo">
+            <input type="text" id="filter-customer-text" placeholder="お客様名" autocomplete="off" oninput="custComboFilter();applyRecordFilters();" onfocus="custComboFocus();" onblur="custComboBlur();">
+            <button type="button" class="cust-combo-btn" id="cust-combo-btn" onclick="custComboToggle()">▼</button>
+            <div class="cust-combo-list" id="cust-combo-list"></div>
+          </span>
+          <select id="filter-shape" style="padding:3px 6px;font-size:12px;border:1px solid #ccc;border-radius:4px;" onchange="applyRecordFilters()">
+            <option value="">形状: すべて</option>
+          </select>
+          <select id="filter-thickness" style="padding:3px 6px;font-size:12px;border:1px solid #ccc;border-radius:4px;" onchange="applyRecordFilters()">
+            <option value="">板厚: すべて</option>
+          </select>
+          <input type="date" id="filter-date-from" style="padding:3px 6px;font-size:12px;border:1px solid #ccc;border-radius:4px;" onchange="applyRecordFilters()">
+          <span style="color:#888;font-size:11px;">〜</span>
+          <input type="date" id="filter-date-to" style="padding:3px 6px;font-size:12px;border:1px solid #ccc;border-radius:4px;" onchange="applyRecordFilters()">
+          <button class="btn btn-secondary" style="font-size:11px;padding:2px 8px;" onclick="clearRecordFilters()">クリア</button>
+        </div>
         <div style="overflow:auto; max-height:300px;">
           <table class="record-list-table">
             <thead>
@@ -1741,6 +1774,147 @@
     return id;
   }
   var currentRecordFilter = 'normal'; // 'normal' or 'shima'
+  var recordSortKey = 'timestamp';
+  var recordSortDir = -1; // -1=降順, 1=昇順
+  var recordFilters = { customerText: '', shape: '', thickness: '', dateFrom: '', dateTo: '' };
+
+  function toggleRecordSort(key){
+    if(recordSortKey === key){ recordSortDir = -recordSortDir; }
+    else { recordSortKey = key; recordSortDir = 1; }
+    renderRecordList();
+  }
+
+  var _custComboAll = [];
+  var _custComboOpen = false;
+  var CUSTOMER_HISTORY_KEY = 'bending-customer-search-history';
+
+  function getCustomerHistory(){
+    try { var r = localStorage.getItem(CUSTOMER_HISTORY_KEY); return r ? JSON.parse(r) : []; } catch(e){ return []; }
+  }
+  function saveCustomerHistory(name){
+    if(!name) return;
+    var h = getCustomerHistory().filter(function(n){ return n !== name; });
+    h.unshift(name);
+    if(h.length > 10) h = h.slice(0, 10);
+    try { localStorage.setItem(CUSTOMER_HISTORY_KEY, JSON.stringify(h)); } catch(e){}
+  }
+
+  function custComboInit(){
+    if(_custComboAll.length > 0) return;
+    var list = getCustomerList();
+    _custComboAll = list.map(function(c){ return c[1]; }).sort(function(a,b){ return a.localeCompare(b,'ja'); });
+  }
+
+  function custComboFocus(){
+    if(_custComboOpen) return;
+    var inp = $('filter-customer-text');
+    var q = inp ? inp.value.toLowerCase() : '';
+    if(!q){
+      var hist = getCustomerHistory();
+      if(hist.length === 0) return; // 履歴がなければ開かない
+    }
+    custComboOpenWith(q, false);
+  }
+  function custComboBlur(){
+    setTimeout(function(){
+      var inp = $('filter-customer-text');
+      if(inp && inp.value) saveCustomerHistory(inp.value);
+    }, 200);
+  }
+
+  function custComboToggle(){
+    if(_custComboOpen){ custComboClose(); } else { custComboOpenWith(($('filter-customer-text')||{value:''}).value.toLowerCase(), true); }
+  }
+
+  function custComboOpenWith(q, showAll){
+    custComboInit();
+    custComboRender(q, showAll);
+    var listEl = $('cust-combo-list');
+    if(!listEl || listEl.children.length === 0){ _custComboOpen = false; return; }
+    listEl.style.display = 'block';
+    _custComboOpen = true;
+    setTimeout(function(){ document.addEventListener('click', custComboOutside); }, 0);
+  }
+
+  function custComboClose(){
+    var listEl = $('cust-combo-list');
+    if(listEl) listEl.style.display = 'none';
+    _custComboOpen = false;
+    document.removeEventListener('click', custComboOutside);
+  }
+
+  function custComboOutside(ev){
+    var combo = $('cust-combo');
+    if(combo && !combo.contains(ev.target)) custComboClose();
+  }
+
+  function custComboFilter(){
+    if(!_custComboOpen) return;
+    var inp = $('filter-customer-text');
+    var q = inp ? inp.value.toLowerCase() : '';
+    custComboRender(q, true);
+    var listEl = $('cust-combo-list');
+    if(listEl) listEl.style.display = listEl.children.length ? 'block' : 'none';
+  }
+
+  function custComboRender(q, showAll){
+    var listEl = $('cust-combo-list'); if(!listEl) return;
+    custComboInit();
+    listEl.innerHTML = '';
+
+    if(!q && !showAll){
+      // フォーカス時：履歴を表示
+      var hist = getCustomerHistory();
+      if(hist.length === 0) return;
+      var hdr = document.createElement('div');
+      hdr.className = 'cust-combo-header'; hdr.textContent = '最近の検索';
+      listEl.appendChild(hdr);
+      hist.forEach(function(n){
+        var d = document.createElement('div'); d.textContent = n;
+        d.onclick = function(){
+          var inp = $('filter-customer-text'); if(inp) inp.value = n;
+          custComboClose(); applyRecordFilters();
+        };
+        listEl.appendChild(d);
+      });
+      return;
+    }
+
+    // ▼ボタン or 入力中：顧客マスタから絞り込み
+    var filtered = q ? _custComboAll.filter(function(n){ return n.toLowerCase().indexOf(q) >= 0; }) : _custComboAll;
+    if(filtered.length === 0){
+      var d = document.createElement('div');
+      d.className = 'cust-combo-empty'; d.textContent = '該当なし';
+      listEl.appendChild(d); return;
+    }
+    filtered.forEach(function(n){
+      var d = document.createElement('div'); d.textContent = n;
+      d.onclick = function(){
+        var inp = $('filter-customer-text'); if(inp) inp.value = n;
+        saveCustomerHistory(n);
+        custComboClose(); applyRecordFilters();
+      };
+      listEl.appendChild(d);
+    });
+  }
+
+  function applyRecordFilters(){
+    recordFilters.customerText = ($('filter-customer-text') && $('filter-customer-text').value) || '';
+    recordFilters.shape     = ($('filter-shape')     && $('filter-shape').value)     || '';
+    recordFilters.thickness = ($('filter-thickness') && $('filter-thickness').value) || '';
+    recordFilters.dateFrom  = ($('filter-date-from') && $('filter-date-from').value) || '';
+    recordFilters.dateTo    = ($('filter-date-to')   && $('filter-date-to').value)   || '';
+    renderRecordList();
+  }
+
+  function clearRecordFilters(){
+    custComboClose();
+    recordFilters = { customerText: '', shape: '', thickness: '', dateFrom: '', dateTo: '' };
+    ['filter-customer-text','filter-shape','filter-thickness','filter-date-from','filter-date-to'].forEach(function(id){
+      var el = $(id); if(el) el.value = '';
+    });
+    renderRecordList();
+  }
 
   function useServerRecords(){
     var p = window.location.protocol;
@@ -1995,20 +2169,73 @@
     if(fsBtn) fsBtn.classList.toggle('record-filter-active', currentRecordFilter === 'shima');
 
     // 設定エントリ除外 + 現在のフィルタ（通常/CHP）で絞り込み
-    var displayRecords = records.filter(function(r){
+    var baseRecords = records.filter(function(r){
       return r.id !== SETTINGS_RECORD_ID && detectMaterial(r.input || {}) === currentRecordFilter;
     });
+
+    // お客様名・形状・板厚ドロップダウンをbaseRecordsから動的生成（選択値を保持）
+    (function(){
+      var selShape = $('filter-shape'), selTh = $('filter-thickness');
+      if(selShape){
+        var shapes = {}, curSh = selShape.value;
+        baseRecords.forEach(function(r){ var s = (r.input && r.input.komonoMode) ? '小物' : (r.input && r.input.shape || ''); if(s) shapes[s] = true; });
+        selShape.innerHTML = '<option value="">形状: すべて</option>';
+        Object.keys(shapes).sort().forEach(function(s){ var o = document.createElement('option'); o.value = s; o.textContent = s; selShape.appendChild(o); });
+        selShape.value = curSh;
+      }
+      if(selTh){
+        var ths = {}, curTh = selTh.value;
+        baseRecords.forEach(function(r){ var t = r.input && r.input.thickness; if(t != null && t !== '') ths[parseFloat(t)] = true; });
+        selTh.innerHTML = '<option value="">板厚: すべて</option>';
+        Object.keys(ths).map(Number).sort(function(a,b){return a-b;}).forEach(function(t){ var o = document.createElement('option'); o.value = String(t); o.textContent = t + 'mm'; selTh.appendChild(o); });
+        selTh.value = curTh;
+      }
+    })();
+
+    // 絞り込みフィルタ適用
+    var displayRecords = baseRecords.slice();
+    if(recordFilters.customerText){
+      var ct = recordFilters.customerText.toLowerCase();
+      displayRecords = displayRecords.filter(function(r){ return (r.customerName || '').toLowerCase().indexOf(ct) >= 0; });
+    }
+    if(recordFilters.shape){
+      displayRecords = displayRecords.filter(function(r){
+        var s = (r.input && r.input.komonoMode) ? '小物' : (r.input && r.input.shape || '');
+        return s === recordFilters.shape;
+      });
+    }
+    if(recordFilters.thickness){
+      var fth = parseFloat(recordFilters.thickness);
+      displayRecords = displayRecords.filter(function(r){ return r.input && parseFloat(r.input.thickness) === fth; });
+    }
+    if(recordFilters.dateFrom){
+      var df = new Date(recordFilters.dateFrom);
+      displayRecords = displayRecords.filter(function(r){ return new Date(r.timestamp) >= df; });
+    }
+    if(recordFilters.dateTo){
+      var dt = new Date(recordFilters.dateTo + 'T23:59:59');
+      displayRecords = displayRecords.filter(function(r){ return new Date(r.timestamp) <= dt; });
+    }
+
     if(displayRecords.length === 0){
       if(emptyMsg) emptyMsg.style.display = 'block';
-      if(countEl) countEl.textContent = '';
+      if(countEl) countEl.textContent = baseRecords.length > 0 ? '(0/' + baseRecords.length + '件)' : '';
       return;
     }
     if(emptyMsg) emptyMsg.style.display = 'none';
-    if(countEl) countEl.textContent = '(' + displayRecords.length + '件)';
+    if(countEl) countEl.textContent = displayRecords.length < baseRecords.length
+      ? '(' + displayRecords.length + '/' + baseRecords.length + '件)'
+      : '(' + displayRecords.length + '件)';
 
-    // timestamp 降順（新しい順）に表示
+
+
     var sorted = displayRecords.slice().sort(function(a, b){
-      return new Date(b.timestamp) - new Date(a.timestamp);
+      if(recordSortKey === 'customerName'){
+        var av = (a.customerName || '').toLowerCase();
+        var bv = (b.customerName || '').toLowerCase();
+        return av < bv ? -recordSortDir : av > bv ? recordSortDir : 0;
+      }
+      return new Date(b.timestamp) - new Date(a.timestamp); // デフォルト: 日時降順
     });
     for(var i = 0; i < sorted.length; i++){
       var r = sorted[i];
@@ -2052,6 +2279,17 @@
     }
   }
 
+  // 板厚セレクトに値をセット（'1' と '1.0' など文字列差異を数値比較で吸収）
+  function setThicknessValue(thickness){
+    var el = $('thickness');
+    if(!el || thickness == null) return;
+    var num = parseFloat(thickness);
+    for(var i=0; i<el.options.length; i++){
+      if(parseFloat(el.options[i].value) === num){ el.value = el.options[i].value; return; }
+    }
+    el.value = String(thickness); // 一致なければそのままセット
+  }
+
   function loadRecordIntoForm(recordId){
     var records = loadRecords();
     var r = records.find(function(rec){ return rec.id === recordId; });
@@ -2069,7 +2307,7 @@
       updateSelectOptions($('shape'), isChp ? SHIMA_SHAPE_OPTIONS : NORMAL_SHAPE_OPTIONS);
     }
 
-    if($('thickness')) $('thickness').value = inp.thickness != null ? String(inp.thickness) : '';
+    setThicknessValue(inp.thickness);
     if($('tate'))      $('tate').value      = inp.lengthL   != null ? String(inp.lengthL)   : '';
     if($('yoko'))      $('yoko').value      = inp.widthW    != null ? String(inp.widthW)    : '';
     if($('yocho'))     $('yocho').value     = inp.extraLength != null ? String(inp.extraLength) : '';
@@ -2161,7 +2399,7 @@
       var inp = r.input || {};
       var opts = inp.options || {};
 
-      if($('thickness')) $('thickness').value = inp.thickness != null ? String(inp.thickness) : '';
+      setThicknessValue(inp.thickness);
       if($('tate'))      $('tate').value      = inp.lengthL   != null ? String(inp.lengthL)   : '';
       if($('yoko'))      $('yoko').value      = inp.widthW    != null ? String(inp.widthW)    : '';
       if($('yocho'))     $('yocho').value     = inp.extraLength != null ? String(inp.extraLength) : '';
