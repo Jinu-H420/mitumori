@@ -2024,9 +2024,11 @@
     var qty = parseInt(($('qty') && $('qty').value) || 1, 10) || 1;
     var weight = parseFloat(($('weight') && $('weight').value) || 0) || 0;
     var bendLength = parseFloat(($('length') && $('length').value) || 0) || 0;
+    var komonoOptEl = document.getElementById('opt-komono-mode');
+    var isKomonoMode = !!(komonoOptEl && komonoOptEl.checked);
     var bendCount = 1;
     var komonoBendCountVal = parseInt(($('komono-bend-count') && $('komono-bend-count').value) || 4, 10);
-    if(isKomonoByDimensions(weight, bendLength)){
+    if(isKomonoMode){
       bendCount = komonoBendCountVal;
     } else if(shape === '複数曲げ'){
       bendCount = parseInt(($('bend-count') && $('bend-count').value) || 4, 10);
@@ -2050,7 +2052,7 @@
         weight: weight,
         bendLength: bendLength,
         material: ($('material') && $('material').value) || 'normal',
-        komonoMode: isKomonoByDimensions(weight, bendLength),
+        komonoMode: isKomonoMode,
         komonoBendCount: ($('komono-bend-count') && $('komono-bend-count').value) || '4',
         options: {
           quantityCoeff:   !!($('opt-use-qty-factor') && $('opt-use-qty-factor').checked),
@@ -2329,6 +2331,10 @@
       override.length = false;
     }
 
+    // 小物モードチェックボックスを復元
+    var komonoOptEl2 = document.getElementById('opt-komono-mode');
+    if(komonoOptEl2) komonoOptEl2.checked = !!inp.komonoMode;
+
     // 小物：曲げ回数を復元（寸法復元で calc が自動判定）
     if($('komono-bend-count') && inp.komonoBendCount != null) $('komono-bend-count').value = String(inp.komonoBendCount);
 
@@ -2413,6 +2419,10 @@
       else { override.length = false; }
 
       if($('komono-bend-count') && inp.komonoBendCount != null) $('komono-bend-count').value = String(inp.komonoBendCount);
+
+      // 小物モードチェックボックスを復元してから calc() を呼ぶ
+      var komonoOptElR = document.getElementById('opt-komono-mode');
+      if(komonoOptElR) komonoOptElR.checked = !!inp.komonoMode;
 
       if($('opt-use-qty-factor'))  $('opt-use-qty-factor').checked  = !!opts.quantityCoeff;
       if($('opt-nakagoshi'))       $('opt-nakagoshi').checked       = !!opts.nakagoshi;
