@@ -562,6 +562,7 @@
                 <th>形状</th>
                 <th>曲げ回数</th>
                 <th>寸法</th>
+                <th>重量</th>
                 <th>数量</th>
                 <th>オプション</th>
                 <th>計算値</th>
@@ -2262,6 +2263,7 @@
         '<td>' + (detectMaterial(inp) === 'shima' ? '<span style="font-size:10px;font-weight:700;background:#1565C0;color:#fff;border-radius:3px;padding:1px 4px;margin-right:3px;">CHP</span>' : '') + (inp.komonoMode ? '小物' : (inp.shape || '')) + '</td>' +
         '<td class="num">' + bendCountDisp + '</td>' +
         '<td>' + dims + '</td>' +
+        '<td class="num">' + (inp.weight != null ? inp.weight + 'kg' : '—') + '</td>' +
         '<td class="num">' + (inp.quantity || '') + '</td>' +
         '<td style="font-size:11px;color:#555;white-space:nowrap;"' + optTitle + '>' + optText + '</td>' +
         '<td class="num">' + fmt(r.calculated) + '\u5186</td>' +
@@ -3114,6 +3116,10 @@
     ['actual-price','customer-no','customer-name','slip-number','record-memo'].forEach(function(id){
       var el = $(id); if(el) el.value = '';
     });
+
+    // 実績一覧の絞り込みフィルターもクリア
+    clearRecordFilters();
+
     calc();
   }
   function doRecord(){
