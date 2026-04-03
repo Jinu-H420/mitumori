@@ -622,7 +622,7 @@
     var list = [];
     var seen = {};
     function add(no, name){
-      var key = (no || '') + '\t' + (name || '');
+      var key = no ? ('no:' + no) : ('name:' + (name || ''));
       if(seen[key]) return;
       seen[key] = true;
       list.push([String(no || ''), String(name || '')]);
