@@ -263,7 +263,6 @@
           <div id="komono-wrap" style="display:none;">
             <div class="opts" style="margin-top:0; margin-bottom:4px;">
               <span class="opt-ttl">オプション</span>
-              <label><input type="checkbox" id="komono-opt-use-qty-factor"> 数量係数を反映する</label>
               <label><input type="checkbox" id="komono-opt-nakagoshi"> 中押し<select id="komono-opt-nakagoshi-type" class="opt-type"><option value="mult">×</option><option value="add">+</option></select><input type="number" id="komono-opt-nakagoshi-val" value="1.5" min="0" step="0.1" style="width:50px;" class="no-spin"><span id="komono-opt-nakagoshi-unit" class="opt-unit" style="display:none;">円</span></label>
               <label><input type="checkbox" id="komono-opt-reverse"> 逆曲げ<select id="komono-opt-reverse-type" class="opt-type"><option value="mult">×</option><option value="add">+</option></select><input type="number" id="komono-opt-reverse-val" value="1.2" min="0" step="0.1" style="width:50px;" class="no-spin"><span id="komono-opt-reverse-unit" class="opt-unit" style="display:none;">円</span></label>
               <label><input type="checkbox" id="komono-opt-hazeri"> ハゼ折<select id="komono-opt-hazeri-type" class="opt-type"><option value="add">+</option><option value="mult">×</option></select><input type="number" id="komono-opt-hazeri-val" value="2000" min="0" step="1" style="width:56px;" class="no-spin"><span id="komono-opt-hazeri-unit" class="opt-unit">円</span></label>
@@ -1308,8 +1307,7 @@
         if(raw !== ''){ var n = parseInt(raw, 10); if(!isNaN(n) && n >= 1) qty = n; }
       }
       var baseUnit = getKomonoBaseUnit(bendCount);
-      var useKomonoQtyF = !($('komono-opt-use-qty-factor') && !$('komono-opt-use-qty-factor').checked);
-      var qtyF = useKomonoQtyF ? qtyFactor(qty) : 1;
+      var qtyF = qtyFactor(qty);
       var unitAfterQty = baseUnit * qtyF;
       var kv = Math.max(300, Math.round(unitAfterQty));
       // 小物オプション適用
@@ -1531,8 +1529,8 @@
   }
 
   function updateQfHighlight(){
-    var useQf = ($('opt-use-qty-factor') && $('opt-use-qty-factor').checked) ||
-                ($('komono-opt-use-qty-factor') && $('komono-opt-use-qty-factor').checked);
+    var isKomonoMode = !!($('komono-total-row') && $('komono-total-row').style.display !== 'none');
+    var useQf = ($('opt-use-qty-factor') && $('opt-use-qty-factor').checked) || isKomonoMode;
     ['qf-row1','qf-row2','qf-row3'].forEach(function(id){
       var r = $(id); if(r) r.classList.remove('qf-active');
     });
@@ -1547,6 +1545,11 @@
   function toggleKomonoWrap(show){
     var ktr = $('komono-total-row');
     if(ktr) ktr.style.display = show ? '' : 'none';
+    var kw2 = $('komono-wrap');
+    if(kw2) kw2.style.display = show ? '' : 'none';
+    // 小物モード時は通常オプション欄を隠す（そちらの「数量係数を反映する」等は小物計算に無効）
+    var optsSection = $('opts-section');
+    if(optsSection) optsSection.style.display = show ? 'none' : '';
     var bcw = $('bend-count-wrap');
     if(show){ if(bcw) bcw.style.display = 'none'; }
     if(!show){ var kw = $('komono-bend-wrap'); if(kw) kw.style.display = 'none'; }
@@ -1600,8 +1603,7 @@
     // 小物：曲げ回数変更で再計算
     var komonoBendEl = $('komono-bend-count');
     if(komonoBendEl){ komonoBendEl.addEventListener('change', calc); komonoBendEl.addEventListener('input', calc); }
-    var komonoQtyFactorEl = $('komono-opt-use-qty-factor');
-    if(komonoQtyFactorEl){ komonoQtyFactorEl.addEventListener('change', calc); }
+
     ['komono-opt-nakagoshi','komono-opt-reverse','komono-opt-hazeri',
      'komono-opt-nakagoshi-val','komono-opt-reverse-val','komono-opt-hazeri-val',
      'komono-opt-nakagoshi-type','komono-opt-reverse-type','komono-opt-hazeri-type'].forEach(function(id){
@@ -2469,7 +2471,7 @@
     var ids = ['thickness','tate','yoko','yocho','shape','qty','weight','length','length-source','bend-count',
                'opt-nakagoshi-val','opt-reverse-val','opt-long-meoshi-val','opt-fukabori-val','opt-hazeri-val',
                'opt-nakagoshi-type','opt-reverse-type','opt-long-meoshi-type','opt-fukabori-type','opt-hazeri-type'];
-    var checks = ['opt-use-qty-factor','komono-opt-use-qty-factor','opt-nakagoshi','opt-reverse','opt-long-meoshi','opt-fukabori','opt-hazeri'];
+    var checks = ['opt-use-qty-factor','opt-nakagoshi','opt-reverse','opt-long-meoshi','opt-fukabori','opt-hazeri'];
     ids.forEach(function(id){ var el=$(id); if(el && saved[id] != null) el.value = saved[id]; });
     checks.forEach(function(id){ var el=$(id); if(el && saved[id] != null) el.checked = !!saved[id]; });
     updateOptUnits();
@@ -2975,7 +2977,7 @@
                'opt-nakagoshi-type','opt-reverse-type','opt-long-meoshi-type','opt-fukabori-type','opt-hazeri-type',
                'komono-opt-nakagoshi-val','komono-opt-reverse-val','komono-opt-hazeri-val',
                'komono-opt-nakagoshi-type','komono-opt-reverse-type','komono-opt-hazeri-type'];
-    var checks = ['opt-use-qty-factor','komono-opt-use-qty-factor','opt-nakagoshi','opt-reverse','opt-long-meoshi','opt-fukabori','opt-hazeri',
+    var checks = ['opt-use-qty-factor','opt-nakagoshi','opt-reverse','opt-long-meoshi','opt-fukabori','opt-hazeri',
                   'komono-opt-nakagoshi','komono-opt-reverse','komono-opt-hazeri'];
     var s = {};
     ids.forEach(function(id){ var el=$(id); if(el) s[id]=el.value; });
@@ -3006,7 +3008,7 @@
                'opt-nakagoshi-type','opt-reverse-type','opt-long-meoshi-type','opt-fukabori-type','opt-hazeri-type',
                'komono-opt-nakagoshi-val','komono-opt-reverse-val','komono-opt-hazeri-val',
                'komono-opt-nakagoshi-type','komono-opt-reverse-type','komono-opt-hazeri-type'];
-    var checks = ['opt-use-qty-factor','komono-opt-use-qty-factor','opt-nakagoshi','opt-reverse','opt-long-meoshi','opt-fukabori','opt-hazeri',
+    var checks = ['opt-use-qty-factor','opt-nakagoshi','opt-reverse','opt-long-meoshi','opt-fukabori','opt-hazeri',
                   'komono-opt-nakagoshi','komono-opt-reverse','komono-opt-hazeri'];
     ids.forEach(function(id){ var el=$(id); if(el&&s[id]!=null) el.value=s[id]; });
     checks.forEach(function(id){ var el=$(id); if(el&&s[id]!=null) el.checked=s[id]; });
@@ -3079,7 +3081,7 @@
     if($('length'))         $('length').value         = '';
     if($('bend-count'))     $('bend-count').value     = '4';
     if($('opt-use-qty-factor'))       $('opt-use-qty-factor').checked       = false;
-    if($('komono-opt-use-qty-factor')) $('komono-opt-use-qty-factor').checked = false;
+
     ['opt-nakagoshi','opt-reverse','opt-long-meoshi','opt-fukabori','opt-hazeri',
      'komono-opt-nakagoshi','komono-opt-reverse','komono-opt-hazeri'].forEach(function(id){
       var el = $(id); if(el) el.checked = false;
