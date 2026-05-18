@@ -1307,7 +1307,8 @@
         if(raw !== ''){ var n = parseInt(raw, 10); if(!isNaN(n) && n >= 1) qty = n; }
       }
       var baseUnit = getKomonoBaseUnit(bendCount);
-      var qtyF = qtyFactor(qty);
+      var useQtyF = ($('opt-use-qty-factor') && $('opt-use-qty-factor').checked);
+      var qtyF = useQtyF ? qtyFactor(qty) : 1;
       var unitAfterQty = baseUnit * qtyF;
       var kv = Math.max(300, Math.round(unitAfterQty));
       // 小物オプション適用
@@ -1342,7 +1343,7 @@
       if($('row-table-price'))  $('row-table-price').style.display = 'none';
       if($('row-bend-adj'))    $('row-bend-adj').style.display   = 'none';
       $('out-base').textContent = fmt(baseUnit) + ' 円（1個あたり）';
-      $('out-qtyF').textContent = String(qtyF);
+      $('out-qtyF').textContent = useQtyF ? String(qtyF) : '1（反映なし）';
       $('out-afterQty').textContent = fmt(Math.round(unitAfterQty)) + ' 円（1個あたり）';
       $('out-nakagoshi').textContent = kOptNaka ? (kNakaType==='mult' ? fmt(kvNaka)+'→'+fmt(kvAfterNaka)+' 円' : '+'+fmt(Math.round(kNakaVal))+' 円') : '—';
       $('out-reverse').textContent   = kOptRev  ? (kRevType==='mult'  ? fmt(kvRev)+'→'+fmt(kvAfterRev)+' 円'   : '+'+fmt(Math.round(kRevVal))+' 円')  : '—';
@@ -1547,9 +1548,7 @@
     if(ktr) ktr.style.display = show ? '' : 'none';
     var kw2 = $('komono-wrap');
     if(kw2) kw2.style.display = show ? '' : 'none';
-    // 小物モード時は通常オプション欄を隠す（そちらの「数量係数を反映する」等は小物計算に無効）
-    var optsSection = $('opts-section');
-    if(optsSection) optsSection.style.display = show ? 'none' : '';
+
     var bcw = $('bend-count-wrap');
     if(show){ if(bcw) bcw.style.display = 'none'; }
     if(!show){ var kw = $('komono-bend-wrap'); if(kw) kw.style.display = 'none'; }
