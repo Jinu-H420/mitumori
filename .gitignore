@@ -1,0 +1,6 @@
+# 得意先名・見積単価を含むため公開リポジトリに載せない
+曲げ逆算ダッシュボード.html
+data/gyakusan/
+.claude/pub/
+.claude/settings.local.json
+tools/paths.json

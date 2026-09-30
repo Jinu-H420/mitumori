@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>曲げ逆算ダッシュボード</title>
+<style>
+:root{--bg:#f4f4f1;--card:#fff;--ink:#1d1d1b;--mut:#6b6a66;--line:#dcdbd5;--ok:#1f7a46;--okbg:#e4f2e9;--chk:#9a5b00;--chkbg:#fbefd9;--ng:#b3261e;--ngbg:#fbe4e2;--acc:#1f5fa8;--accbg:#e3edf9;--sel:#fff8d6}
+@media (prefers-color-scheme:dark){:root{--bg:#161615;--card:#22221f;--ink:#f0efec;--mut:#a3a29c;--line:#3a3a36;--ok:#7fd3a0;--okbg:#1d3527;--chk:#f2c071;--chkbg:#3a2c14;--ng:#f19b94;--ngbg:#3d1f1c;--acc:#8ab8ee;--accbg:#1b2c42;--sel:#3a3517}}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 "Yu Gothic UI","Hiragino Sans",sans-serif;display:flex;flex-direction:column}
+header{padding:10px 16px;border-bottom:1px solid var(--line);background:var(--card);display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+h1{font-size:18px;margin:0}
+.kpi{display:flex;gap:14px}
+.kpi div{font-size:12px;color:var(--mut)}
+.kpi b{display:block;font-size:18px;color:var(--ink);font-variant-numeric:tabular-nums}
+.filters{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-left:auto}
+select,button{font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:6px;padding:4px 8px;cursor:pointer}
+button:hover{border-color:var(--mut)}
+.wrap{flex:1;display:grid;grid-template-columns:minmax(340px,440px) 1fr;min-height:0}
+#list{overflow:auto;padding:10px;border-right:1px solid var(--line)}
+.grp{font-weight:700;margin:14px 2px 6px;display:flex;justify-content:space-between;gap:8px}
+.grp:first-child{margin-top:2px}
+.grp small{font-weight:400;color:var(--mut)}
+.card{background:var(--card);border:1px solid var(--line);border-left:5px solid var(--chk);border-radius:0 8px 8px 0;padding:8px 10px;margin-bottom:8px;cursor:pointer}
+.card.ok{border-left-color:var(--ok)}
+.card.on{background:var(--sel);outline:2px solid var(--acc)}
+.card.j-yes{opacity:.75}.card.j-no{opacity:.5}
+.top{display:flex;gap:8px;align-items:center;font-size:12px;color:var(--mut)}
+.badge{font-size:11px;padding:0 6px;border-radius:4px}
+.b-ok{background:var(--okbg);color:var(--ok)}.b-chk{background:var(--chkbg);color:var(--chk)}
+.b-yes{background:var(--accbg);color:var(--acc)}.b-no{background:var(--ngbg);color:var(--ng)}
+.src{font-weight:600;margin:3px 0}
+.nums{display:flex;gap:12px;font-variant-numeric:tabular-nums;font-size:13px}
+.nums .res{color:var(--acc);font-weight:700}
+.nums .up{color:var(--ng)}.nums .dn{color:var(--ok)}
+.why{color:var(--chk);font-size:12px;margin-top:2px}
+#view{display:grid;grid-template-columns:minmax(320px,1fr) minmax(340px,1.05fr);min-width:0;min-height:0}
+#detail{padding:10px 14px;background:var(--card);border-right:1px solid var(--line);overflow:auto;min-height:0}
+#pdfpane{display:flex;flex-direction:column;min-width:0;min-height:0}
+#detail .empty{color:var(--mut)}
+.calc{display:flex;flex-wrap:wrap;gap:4px 18px;font-variant-numeric:tabular-nums;margin:6px 0}
+.calc small{display:block;color:var(--mut);font-size:11px}
+.calc .res{color:var(--acc);font-weight:700;font-size:16px}
+button.primary{background:var(--acc);border-color:var(--acc);color:var(--card);font-weight:700}
+button:disabled{opacity:.45;cursor:default}
+.msg{flex-basis:100%;font-size:13px;color:var(--mut)}
+.msg.err{color:var(--ng)}.msg.good{color:var(--ok)}
+.b-reg{background:var(--ok);color:var(--card)}
+.acts label{font-size:12px;color:var(--mut);display:flex;align-items:center;gap:4px}
+.acts input.price{flex:0 0 7em;min-width:0;text-align:right}
+table.fit{border-collapse:collapse;width:100%;margin:6px 0;font-variant-numeric:tabular-nums}
+table.fit th{text-align:left;font-weight:500;color:var(--mut);padding:3px 8px 3px 0;white-space:nowrap}
+table.fit td{padding:3px 8px 3px 0}
+table.fit td:last-child{text-align:right;white-space:nowrap;width:7em}
+table.fit input[type=number]{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:5px;padding:2px 6px;text-align:right}
+table.fit tr.off td,table.fit tr.off th{opacity:.45}
+table.fit tr.bend td:last-child,table.fit tr.bend th{color:var(--acc);font-weight:700}
+table.fit tr.sum td,table.fit tr.sum th{border-top:1px solid var(--line);font-weight:700}
+table.fit tr.sum.near td,table.fit tr.sum.near th{color:var(--ok)}
+table.fit tr.sum.far td,table.fit tr.sum.far th{color:var(--ng)}
+table.fit tr:first-child td.t{font-weight:700}
+.tip{cursor:pointer;border-bottom:1px dashed var(--mut)}
+.tip:hover,.tip:focus-visible{color:var(--acc);outline:none}
+.how{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px 12px;margin:4px 0 6px;font-size:13px;font-variant-numeric:tabular-nums}
+.how ol{margin:4px 0;padding-left:20px}.how li{margin:3px 0}
+.how small{color:var(--mut)}
+.acts{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:6px}
+.acts .yes.on{background:var(--accbg);border-color:var(--acc);color:var(--acc)}
+.acts .no.on{background:var(--ngbg);border-color:var(--ng);color:var(--ng)}
+.acts a{color:var(--acc)}
+.acts input{font:inherit;flex:1;min-width:160px;padding:4px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+iframe{flex:1;border:0;width:100%;background:#525659}
+[hidden]{display:none!important}
+.nopdf{flex:1;display:flex;align-items:center;justify-content:center;color:var(--mut)}
+@media (max-width:1200px){#view{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr)}#detail{border-right:0;border-bottom:1px solid var(--line);overflow:visible}iframe{min-height:55vh}}
+@media (max-width:800px){.wrap{grid-template-columns:1fr;grid-template-rows:45vh 1fr}#list{border-right:0;border-bottom:1px solid var(--line)}iframe{min-height:60vh}}
+</style>
+</head>
+<body>
+<header>
+  <h1>曲げ逆算ダッシュボード</h1>
+  <div class="kpi">
+    <div>候補<b id="k-all">0</b></div>
+    <div>使える<b id="k-yes">0</b></div>
+    <div>使えない<b id="k-no">0</b></div>
+    <div>未判定<b id="k-un">0</b></div>
+    <div>登録済み<b id="k-reg">—</b></div>
+  </div>
+  <div class="filters">
+    <select id="f-shape"><option value="">形状：すべて</option></select>
+    <select id="f-flag"><option value="">印：すべて</option><option value="ok">使えそう</option><option value="chk">要確認</option></select>
+    <select id="f-judge"><option value="">判定：すべて</option><option value="un">未判定</option><option value="yes">使える</option><option value="no">使えない</option></select>
+    <button id="reg" class="primary" disabled>計算書に登録</button>
+  </div>
+  <div id="msg" class="msg" role="status" aria-live="polite"></div>
+</header>
+<div class="wrap">
+  <div id="list"></div>
+  <div id="view">
+    <div id="detail"><span class="empty">左の一覧をクリックすると、ここに内訳が出ます。</span></div>
+    <div id="pdfpane">
+      <div class="nopdf" id="nopdf">PDFはここに表示されます</div>
+      <iframe id="pdf" hidden title="見積回答PDF"></iframe>
+    </div>
+  </div>
+</div>
+<script>
+const DATA = /*DATA*/[];
+const PDF_BASE = 'http://localhost:8766/';
+const LL = ['〜835mm','〜1670mm','〜2505mm','〜3048mm','3048mm超'];
+const SHAPES = ['L曲げ','コの字曲げ','Z曲げ','C型曲げ','ハット曲げ','三方曲げ','四方曲げ'];
+const KEY = 'bend-gyakusan-judge';
+const wl = w => w === 9999 ? '150kg超' : '〜' + w + 'kg';
+const yen = v => Math.round(v).toLocaleString('ja-JP');
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const pdfUrl = d => d.pdf ? PDF_BASE + d.pdf.split('/').map(encodeURIComponent).join('/') : '';
+
+let J = {};
+try { J = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { J = {}; }
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(J)); } catch (e) {} };
+let cur = -1;
+
+/* ===== 計算書（GAS）への登録 ===== */
+const GAS_URL = '/*GAS*/';
+const SBC = { 'L曲げ':1, 'Z曲げ':2, 'コの字曲げ':2, 'C型曲げ':4, '三方曲げ':3, '四方曲げ':4, 'ハット曲げ':4 };
+let REG = null;  // 計算書に登録済みの逆算レコード id（null = まだ読み込めていない）
+const gid = d => { let h = 5381; for (const c of d.k) h = ((h * 33) ^ c.charCodeAt(0)) >>> 0; return 'gyk_' + h.toString(36); };
+const priceOf = d => fit(d).bend;
+const msg = (t, cls) => { const m = document.getElementById('msg'); m.textContent = t; m.className = 'msg' + (cls ? ' ' + cls : ''); };
+
+function toRecord(d){
+  const p = priceOf(d), memo = (J[d.k] || {}).m || '';
+  return {
+    id: gid(d), timestamp: d.date + 'T12:00:00+09:00',
+    source: 'gyakusan', sourceDate: d.date, sourceTanka: d.tanka, sourceText: d.text, sourcePdf: d.pdf,
+    input: {
+      thickness: d.t, lengthL: d.a, widthW: d.b, extraLength: d.y, shape: d.shape, bendCount: SBC[d.shape] || 1,
+      quantity: d.qty || 1, weight: d.wt, bendLength: d.a, material: 'normal', komonoMode: false, komonoBendCount: '4',
+      options: { quantityCoeff:false, qfThresh1:4, qfThresh2:19, qfFactor1:1.5, qfFactor2:1.0, qfFactor3:0.8,
+        nakagoshi:false, nakagoshiFactor:1.5, nakagoshiType:'mult', reverse:false, reverseFactor:1.2, reverseType:'mult',
+        longPress:false, longMeoshiAdd:2500, longMeoshiType:'add', deep:false, fukaboriAdd:3000, fukaboriType:'add',
+        hazeri:false, hazeriAdd:2000, hazeriType:'add' }
+    },
+    calculated: d.table, actual: p, gap: p - d.table,
+    gapPercent: d.table ? Math.round((p - d.table) / d.table * 100) : 0,
+    customerCode: '', customerName: d.cust, slipNumber: '',
+    memo: (() => { const o = fit(d);
+      return '逆算（見積' + yen(d.tanka) + '円 ＝ 材料' + yen(o.mat) + '円（' + o.wt + 'kg×' + o.matRate + '円）'
+        + (o.cutOn ? ' ＋ 切断' + yen(o.cut) + '円' : '') + (o.hole ? ' ＋ 穴' + yen(o.hole) + '円' : '')
+        + ' ＋ 曲げ' + yen(o.bend) + '円' + (o.diff ? '／差' + (o.diff > 0 ? '+' : '') + yen(o.diff) + '円' : '') + '）'
+        + (memo ? '／' + memo : ''); })(),
+    browserId: 'gyakusan'
+  };
+}
+
+async function fetchAll(){
+  const r = await fetch(GAS_URL, { cache: 'no-store' });
+  const arr = await r.json();
+  if (!Array.isArray(arr)) throw new Error('計算書のデータを読めませんでした');
+  return arr;
+}
+async function writeAll(arr){
+  await fetch(GAS_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(arr) });
+}
+async function loadReg(){
+  try {
+    const arr = await fetchAll();
+    REG = new Set(arr.filter(x => x && x.source === 'gyakusan').map(x => x.id));
+  } catch (e) { REG = null; msg('計算書の登録状況を読めませんでした（ネットにつながっているか確認してください）', 'err'); }
+  render(); if (cur >= 0) show(cur);
+}
+function pending(){ return REG ? DATA.filter(d => (J[d.k] || {}).v === 'yes' && !REG.has(gid(d))) : []; }
+
+async function register(){
+  const list = pending();
+  if (!list.length) return;
+  if (!confirm(list.length + '件を「逆算」の印を付けて計算書の実績に登録します。よろしいですか？')) return;
+  const b = document.getElementById('reg'); b.disabled = true; msg('登録しています…');
+  try {
+    const arr = await fetchAll();                 // 直前の最新を読んでから足す（他の人の登録を消さない）
+    const have = new Set(arr.map(x => x && x.id));
+    const add = list.map(toRecord).filter(r => !have.has(r.id));
+    await writeAll(arr.concat(add));
+    const after = await fetchAll();
+    REG = new Set(after.filter(x => x && x.source === 'gyakusan').map(x => x.id));
+    const ok = add.filter(r => REG.has(r.id)).length;
+    msg(ok === add.length ? ok + '件を計算書に登録しました' : '登録できたのは' + ok + '件です。もう一度押してください', ok === add.length ? 'good' : 'err');
+  } catch (e) { msg('登録できませんでした：' + e.message, 'err'); }
+  render(); if (cur >= 0) show(cur);
+}
+
+async function unregister(d){
+  if (!confirm('この案件を計算書の実績から取り消します。よろしいですか？')) return;
+  msg('取り消しています…');
+  try {
+    const id = gid(d), arr = await fetchAll();
+    await writeAll(arr.filter(x => !(x && x.id === id && x.source === 'gyakusan')));
+    const after = await fetchAll();
+    REG = new Set(after.filter(x => x && x.source === 'gyakusan').map(x => x.id));
+    msg(REG.has(id) ? '取り消せませんでした。もう一度押してください' : '計算書から取り消しました', REG.has(id) ? 'err' : 'good');
+  } catch (e) { msg('取り消せませんでした：' + e.message, 'err'); }
+  render(); show(DATA.indexOf(d));
+}
+
+const fs = document.getElementById('f-shape');
+SHAPES.filter(s => DATA.some(d => d.shape === s)).forEach(s => fs.insertAdjacentHTML('beforeend', `<option>${s}</option>`));
+
+function kpi(){
+  let y = 0, n = 0;
+  DATA.forEach(d => { const j = (J[d.k] || {}).v; if (j === 'yes') y++; else if (j === 'no') n++; });
+  document.getElementById('k-all').textContent = DATA.length;
+  document.getElementById('k-yes').textContent = y;
+  document.getElementById('k-no').textContent = n;
+  document.getElementById('k-un').textContent = DATA.length - y - n;
+  document.getElementById('k-reg').textContent = REG ? DATA.filter(d => REG.has(gid(d))).length : '—';
+  const p = pending().length, b = document.getElementById('reg');
+  b.disabled = !p; b.textContent = p ? '計算書に登録（' + p + '件）' : '計算書に登録';
+}
+
+function render(){
+  const sh = fs.value, fl = document.getElementById('f-flag').value, jd = document.getElementById('f-judge').value;
+  let h = '', last = '';
+  DATA.forEach((d, i) => {
+    const j = (J[d.k] || {}).v || 'un';
+    if (sh && d.shape !== sh) return;
+    if (fl && d.flag !== fl) return;
+    if (jd && j !== jd) return;
+    const g = d.shape + d.w + '-' + d.l;
+    if (g !== last) {
+      last = g;
+      h += `<div class="grp"><span>${d.shape}　${wl(d.w)} × ${LL[d.l]}</span><small>実績${d.have}件／表 ${yen(d.table)}円</small></div>`;
+    }
+    const p = priceOf(d), diff = p - d.table;
+    const jb = (REG && REG.has(gid(d)) ? '<span class="badge b-reg">登録済み</span>' : '')
+      + (j === 'yes' ? '<span class="badge b-yes">使える</span>' : j === 'no' ? '<span class="badge b-no">使えない</span>' : '');
+    h += `<div class="card ${d.flag} j-${j}${i === cur ? ' on' : ''}" data-i="${i}">
+      <div class="top"><span class="badge b-${d.flag}">${d.flag === 'ok' ? '使えそう' : '要確認'}</span>${jb}<span>${esc(d.date)}　${esc(d.cust)}</span></div>
+      <div class="src">${esc(d.text)}</div>
+      <div class="nums"><span>単価 ${yen(d.tanka)}</span><span class="res">曲げ ${yen(p)}</span><span class="${diff > 0 ? 'up' : 'dn'}">表と ${diff > 0 ? '+' : ''}${yen(diff)}</span></div>
+      ${d.why.length ? `<div class="why">${d.why.map(esc).join('／')}</div>` : ''}
+    </div>`;
+  });
+  document.getElementById('list').innerHTML = h || '<p style="color:var(--mut)">該当なし</p>';
+  kpi();
+}
+
+/* ===== 内訳あわせ（PDFを見ながら見積金額を再現する） ===== */
+const DEF_KEY = 'bend-gyakusan-fit-def';
+let DEF = { matRate: null, cutOn: false, cutRate: 150, holeRate: 50 };
+try { DEF = Object.assign(DEF, JSON.parse(localStorage.getItem(DEF_KEY) || '{}')); } catch (e) {}
+const saveDef = () => { try { localStorage.setItem(DEF_KEY, JSON.stringify(DEF)); } catch (e) {} };
+
+const matRateOf = d => DEF.matRate != null ? DEF.matRate : (d.t === 3.2 || d.t === 4.5 ? 190 : 185);
+const cutLenOf = d => Math.round(2 * (d.a + d.y) + 2 * (d.b + d.y));
+const holeNOf = d => Math.round(d.ana / 50);
+
+function fit(d){
+  const f = (J[d.k] || {}).f || {};
+  const o = {
+    wt: f.wt != null ? +f.wt : d.wt,
+    matRate: f.matRate != null ? +f.matRate : matRateOf(d),
+    cutOn: f.cutOn != null ? !!f.cutOn : DEF.cutOn,
+    cutLen: f.cutLen != null ? +f.cutLen : cutLenOf(d),
+    cutRate: f.cutRate != null ? +f.cutRate : DEF.cutRate,
+    holeN: f.holeN != null ? +f.holeN : holeNOf(d),
+    holeRate: f.holeRate != null ? +f.holeRate : DEF.holeRate
+  };
+  o.mat = Math.round(o.wt * o.matRate);
+  o.cut = o.cutOn ? Math.round(o.cutLen / 1000 * o.cutRate) : 0;
+  o.hole = Math.round(o.holeN * o.holeRate);
+  o.rest = d.tanka - o.mat - o.cut - o.hole;              // 残り＝曲げ工賃の目安
+  o.bend = f.bend != null ? +f.bend : Math.round(o.rest / 10) * 10;
+  o.sum = o.mat + o.cut + o.hole + o.bend;
+  o.diff = o.sum - d.tanka;
+  return o;
+}
+const setFit = (d, patch) => { const j = J[d.k] || {}; J[d.k] = Object.assign({}, j, { f: Object.assign({}, j.f, patch) }); save(); };
+
+function fitPanel(d){
+  const o = fit(d), near = Math.abs(o.diff) <= Math.max(50, d.tanka * 0.01);
+  const n = (id, v, w) => `<input id="${id}" type="number" step="${id === 'f-rate' || id === 'f-cutrate' || id === 'f-holerate' ? 1 : id === 'f-wt' ? 0.1 : 10}" min="0" value="${v}" style="width:${w}">`;
+  return `<table class="fit">
+    <tr><th>見積の単価（この金額に近づける）</th><td colspan="2"></td><td class="t">${yen(d.tanka)}円</td></tr>
+    <tr><th>材料費</th><td>${n('f-wt', o.wt, '5em')}kg</td><td>× ${n('f-rate', o.matRate, '4.5em')}円/kg</td><td>${yen(o.mat)}円</td></tr>
+    <tr class="${o.cutOn ? '' : 'off'}"><th><label><input type="checkbox" id="f-cuton"${o.cutOn ? ' checked' : ''}>切断費</label></th><td>${n('f-cutlen', o.cutLen, '5em')}mm</td><td>× ${n('f-cutrate', o.cutRate, '4.5em')}円/m</td><td>${yen(o.cut)}円</td></tr>
+    <tr><th>穴代</th><td>${n('f-holen', o.holeN, '4em')}個</td><td>× ${n('f-holerate', o.holeRate, '4.5em')}円/個</td><td>${yen(o.hole)}円</td></tr>
+    <tr class="bend"><th>曲げ工賃</th><td colspan="2">${n('f-bend', o.bend, '6em')}円　<button id="f-rest" type="button" title="見積金額にぴったり合わせる">残り（${yen(o.rest)}円）を入れる</button></td><td>${yen(o.bend)}円</td></tr>
+    <tr class="sum ${near ? 'near' : 'far'}"><th>合計</th><td colspan="2">${near ? '見積金額とほぼ同じ' : (o.diff > 0 ? '見積より高い' : '見積より安い')}　${o.diff > 0 ? '+' : ''}${yen(o.diff)}円</td><td>${yen(o.sum)}円</td></tr>
+    <tr><th>表の値段（今の計算書）</th><td colspan="2">${o.bend - d.table > 0 ? '逆算のほうが高い' : o.bend - d.table < 0 ? '逆算のほうが安い' : '同じ'}　${o.bend - d.table > 0 ? '+' : ''}${yen(o.bend - d.table)}円</td><td>${yen(d.table)}円</td></tr>
+  </table>`;
+}
+
+function bindFit(d){
+  const re = () => { document.getElementById('fit-wrap').innerHTML = fitPanel(d); bindFit(d); render(); };
+  const num = (id, key, glob) => {
+    const el = document.getElementById(id); if (!el) return;
+    el.onchange = () => { const v = el.value === '' ? null : +el.value; setFit(d, { [key]: v }); if (glob && v != null) { DEF[glob] = v; saveDef(); } re(); };
+  };
+  num('f-wt', 'wt'); num('f-rate', 'matRate', 'matRate'); num('f-cutlen', 'cutLen');
+  num('f-cutrate', 'cutRate', 'cutRate'); num('f-holen', 'holeN'); num('f-holerate', 'holeRate', 'holeRate');
+  num('f-bend', 'bend');
+  const cb = document.getElementById('f-cuton');
+  cb.onchange = () => { setFit(d, { cutOn: cb.checked }); DEF.cutOn = cb.checked; saveDef(); re(); };
+  document.getElementById('f-rest').onclick = () => { setFit(d, { bend: Math.round(fit(d).rest / 10) * 10 }); re(); };
+}
+
+function kiriHow(d){
+  const A = d.a + d.y, B = d.b + d.y;
+  const wt = d.t * A * B * 7.85 / 1e6;
+  const rate = (d.t === 3.2 || d.t === 4.5) ? 190 : 185;
+  const f1 = n => (Math.round(n * 10) / 10).toLocaleString('ja-JP');
+  const yWhy = d.bonde ? 'ボンデ鋼板なので100mm' : d.t <= 2.3 ? '板厚2.3mm以下なので50mm' : d.t <= 3.2 ? '板厚3.2mmなので30mm' : '板厚4.5mm以上なので20mm';
+  return `<b>切板代の計算</b>
+  <ol>
+    <li>余長を足す：${yWhy}を縦横それぞれに加える<br>${d.a} + ${d.y} = <b>${f1(A)}</b>mm、${d.b} + ${d.y} = <b>${f1(B)}</b>mm</li>
+    <li>重量：板厚 × 縦 × 横 × 比重7.85 ÷ 1,000,000<br>${d.t} × ${f1(A)} × ${f1(B)} × 7.85 ÷ 1,000,000 = <b>${f1(wt)}kg</b></li>
+    <li>切板代：重量 × ${rate}円/kg（t3.2・t4.5は190円、それ以外は185円）<br>${f1(wt)} × ${rate} = <b>${yen(wt * rate)}円</b></li>
+  </ol>
+  <small>見積り計算書（材料費込み）の「提示金額」と同じ考え方です。寸法は見積の文面から読み取った値です。</small>`;
+}
+
+function show(i){
+  cur = i;
+  const d = DATA[i], j = J[d.k] || {}, diff = d.bend - d.table, url = pdfUrl(d);
+  document.getElementById('detail').innerHTML = `
+    <div class="top"><span class="badge b-${d.flag}">${d.flag === 'ok' ? '使えそう' : '要確認'}</span><span>${esc(d.date)}　${esc(d.cust)}　／　${d.shape} ${wl(d.w)} × ${LL[d.l]}</span></div>
+    <div class="src">${esc(d.text)}</div>
+    <div class="dim">t${d.t} × ${d.a} × ${d.b}　数量 ${d.qty || '—'}　<span class="tip" id="kiri-btn" role="button" tabindex="0" aria-expanded="false" aria-controls="kiri-how">重量の出し方ⓘ</span></div>
+    <div class="how" id="kiri-how" hidden>${kiriHow(d)}</div>
+    <div id="fit-wrap">${fitPanel(d)}</div>
+    ${d.why.length ? `<div class="why">${d.why.map(esc).join('／')}</div>` : ''}
+    <div class="acts">
+      <button class="yes${j.v === 'yes' ? ' on' : ''}" data-v="yes">使える</button>
+      <button class="no${j.v === 'no' ? ' on' : ''}" data-v="no">使えない</button>
+      <input id="memo" placeholder="メモ（例：形状が違う）" value="${esc(j.m || '')}">
+      ${REG && REG.has(gid(d)) ? '<button id="unreg" title="計算書の実績から消す">登録を取り消す</button>' : ''}
+      ${url ? `<a href="${url}" target="_blank" rel="noopener">PDFを別タブで開く</a>` : ''}
+    </div>`;
+  const kb = document.getElementById('kiri-btn'), kh = document.getElementById('kiri-how');
+  const toggleKiri = () => { kh.hidden = !kh.hidden; kb.setAttribute('aria-expanded', String(!kh.hidden)); };
+  kb.onclick = toggleKiri;
+  kb.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleKiri(); } };
+  const f = document.getElementById('pdf'), np = document.getElementById('nopdf');
+  if (url) { f.src = url; f.hidden = false; np.hidden = true; }
+  else { f.hidden = true; np.hidden = false; np.textContent = 'PDFが見つかりません'; }
+  document.querySelectorAll('.acts button').forEach(b => b.onclick = () => {
+    const v = b.dataset.v;
+    J[d.k] = Object.assign({}, J[d.k], { v: (J[d.k] || {}).v === v ? undefined : v });
+    save(); show(i); render();
+  });
+  document.getElementById('memo').oninput = e => { J[d.k] = Object.assign({}, J[d.k], { m: e.target.value }); save(); };
+  bindFit(d);
+  const ub = document.getElementById('unreg'); if (ub) ub.onclick = () => unregister(d);
+  render();
+}
+
+document.getElementById('list').addEventListener('click', e => {
+  const c = e.target.closest('.card'); if (c) show(+c.dataset.i);
+});
+['f-shape','f-flag','f-judge'].forEach(id => document.getElementById(id).onchange = render);
+document.getElementById('reg').onclick = register;
+render();
+loadReg();
+</script>
+</body>
+</html>

@@ -26,6 +26,15 @@
 - **ファイル名の文字コード注意**: 日本語ファイル名は NFC（濁点合成済み）で統一。Mac/Googleドライブ経由で NFD 名が混入した事故歴あり（2026-07 に整理済み）。`git status` に「削除＋未追跡」のペアが並んだら NFD 混入を疑うこと。Mac 側では `git config core.precomposeunicode true` を推奨。
 - 古くなった資料は `docs/archive/` へ移動する（削除しない）。
 
+## 曲げ逆算ダッシュボード（実績の少ない欄を過去見積から埋める）
+
+- 過去の見積回答（材料込み単価）から「単価 − 切板代(重量×185/190円) − 穴代(50円/個)」で曲げ工賃を逆算し、計算書の実績が0〜2件の欄に当たるものを PDF と並べて判定する画面。
+- 更新: `python tools/update_gyakusan.py`（トークン不要）。`曲げ逆算ダッシュボード.html` と `data/gyakusan/`（候補・蓄積推移 history.csv）を作り直す。表示は `逆算ダッシュボード起動.bat`（localhost:8765 / PDFは 8766 で Z: を配信）。
+- データの場所はPC・アカウントごとに違うので、`tools/update_gyakusan.py` は 環境変数 `MITUMORI_ARCHIVE` / `MITUMORI_PDF_ROOT` → `tools/paths.json`（gitignore済み）→ 既定候補（`~/uchino-kanban-estimate/...`、`Z:`、`\\srv02\共有`）の順で探す。起動batも同じ順でPDFフォルダとPythonを探す。
+- 元データ `<ユーザー>\uchino-kanban-estimate\data\archive\items.jsonl` は **「受注・見積自動処理システム要件定義」チャットの担当**。PDFの読み取り（トークンを使う作業）はここでやらず、あちらに任せる（二重処理は金額事故のもと）。ここからは読むだけ。
+- 「使える」と判定したものは画面の「計算書に登録」で GAS の実績に追加される（`source: 'gyakusan'`、id は `gyk_…`、`browserId: 'gyakusan'`）。計算書の実績一覧では「逆算」バッジで社長の直接回答と区別。GAS は配列まるごと上書きなので、登録直前に最新を読んでから足す。
+- 画面・テンプレートは `.claude/dash_template.html`。**得意先名・単価を含む出力は .gitignore 済み。このリポジトリは公開なので絶対にコミットしない。**
+
 ## 動作確認
 
 ブラウザで 曲げ見積り計算書.html を直接開き、次を確認する:

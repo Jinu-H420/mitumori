@@ -2261,7 +2261,7 @@
       var optTitle = optText !== '—' ? ' title="' + (qfTip ? qfTip + '\n' : '') + optText + '"' : '';
       tr.innerHTML =
         '<td>' + formatDate(r.timestamp) + '</td>' +
-        '<td>' + (detectMaterial(inp) === 'shima' ? '<span style="font-size:10px;font-weight:700;background:#1565C0;color:#fff;border-radius:3px;padding:1px 4px;margin-right:3px;">CHP</span>' : '') + (inp.komonoMode ? '小物' : (inp.shape || '')) + '</td>' +
+        '<td>' + (r.source === 'gyakusan' ? '<span style="font-size:10px;font-weight:700;background:#8a5a00;color:#fff;border-radius:3px;padding:1px 4px;margin-right:3px;" title="過去の見積（' + String(r.sourceDate || '').replace(/[^0-9-]/g, '') + '）から逆算して登録。社長の直接回答ではない">逆算</span>' : '') + (detectMaterial(inp) === 'shima' ? '<span style="font-size:10px;font-weight:700;background:#1565C0;color:#fff;border-radius:3px;padding:1px 4px;margin-right:3px;">CHP</span>' : '') + (inp.komonoMode ? '小物' : (inp.shape || '')) + '</td>' +
         '<td class="num">' + bendCountDisp + '</td>' +
         '<td>' + dims + '</td>' +
         '<td class="num">' + (inp.weight != null ? inp.weight + 'kg' : '—') + '</td>' +
