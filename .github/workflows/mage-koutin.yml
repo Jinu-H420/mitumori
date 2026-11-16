@@ -1,0 +1,63 @@
+# 曲げ見積り計算書.html が main で変わったら、スキル mage-koutin の控え（bend_tables.json）を
+# 自動で作り直してコミットし、配布用の mage-koutin.skill を作る。
+#
+# スキル本体はふだん公開中の計算書を直接読むので、ここは「ネットに出られない環境」用の控えと
+# 配布ファイルを最新にしておくための仕組み。
+# 配布ファイルは Actions の実行結果ページの「Artifacts」からダウンロードできる（90日間）。
+name: スキル mage-koutin の単価表を更新
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '曲げ見積り計算書.html'
+      - 'skills/mage-koutin/**'
+      - 'tools/export_bend_tables.py'
+      - 'tools/package_skill.py'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: mage-koutin
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 計算書から単価表を作り直す
+        run: python tools/export_bend_tables.py
+
+      - name: 計算の手順を検算する（計算書と照合した14例）
+        run: python skills/mage-koutin/scripts/bend_calc.py --test --offline
+
+      - name: 変わっていればコミットする
+        run: |
+          if git diff --quiet -- skills/mage-koutin/scripts/bend_tables.json; then
+            echo "単価表の控えは最新です"
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add skills/mage-koutin/scripts/bend_tables.json
+          git commit -m 'スキル：曲げ見積り計算書の変更を単価表の控えに反映（自動）'
+          git push
+
+      - name: 配布用の mage-koutin.skill を作る
+        env:
+          MITUMORI_SKILL_DIST: dist
+        run: python tools/package_skill.py
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mage-koutin-skill
+          path: dist/mage-koutin.skill
+          retention-days: 90

@@ -1,6 +1,7 @@
 """曲げ工賃の計算（曲げ見積り計算書.html と同じ計算を Python で行う）
 
 標準ライブラリだけで動く。pip install は不要。
+単価表は毎回、最新の 曲げ見積り計算書.html から読む（読めなければ同梱の bend_tables.json）。
 
   python bend_calc.py --test                     動作確認（答えの分かっている例で検算）
   python bend_calc.py --shape L曲げ --t 6 --tate 500 --yoko 1500 --qty 3
@@ -11,10 +12,57 @@ Python から使う場合:
   r = b.keisan(shape='コの字曲げ', t=4.5, tate=400, yoko=2000, qty=2, options=['中押し'])
   print(r['total'], r['breakdown'])
 """
-import argparse, csv, json, os, sys
+import argparse, csv, json, os, sys, urllib.parse, urllib.request
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-T = json.load(open(os.path.join(HERE, 'bend_tables.json'), encoding='utf-8'))
+sys.path.insert(0, HERE)
+from bend_tables_html import tables_from_html, check  # noqa: E402
+
+HTML_NAME = '曲げ見積り計算書.html'
+PAGES_URL = 'https://jinu-h420.github.io/mitumori/' + urllib.parse.quote(HTML_NAME)
+BUNDLED = os.path.join(HERE, 'bend_tables.json')
+
+
+def _read(where):
+    if where.startswith('http'):
+        with urllib.request.urlopen(where, timeout=float(os.environ.get('MITUMORI_BEND_TIMEOUT', '5'))) as r:
+            return r.read().decode('utf-8')
+    return open(where, encoding='utf-8').read()
+
+
+def load_tables(offline=False):
+    """単価表を読む。社長が計算書のHTMLを直したら、次の計算からそのまま新しい単価になる。
+
+    探す順番:
+      1. 環境変数 MITUMORI_BEND_HTML（計算書HTMLのパスかURL）
+      2. mitumori リポジトリの中で動いているなら、そのリポジトリの 曲げ見積り計算書.html
+      3. 公開中の計算書（GitHub Pages）
+      4. どれも読めなければ、同梱の bend_tables.json（ネットに出られない環境用の控え）
+    MITUMORI_BEND_OFFLINE=1 か offline=True なら 4 だけを使う。
+    戻り値は (単価表, 出どころの説明, 控えを使ったか)。
+    """
+    notes = []
+    if not offline and os.environ.get('MITUMORI_BEND_OFFLINE') != '1':
+        repo_html = os.path.normpath(os.path.join(HERE, '..', '..', '..', HTML_NAME))
+        cands = [(os.environ.get('MITUMORI_BEND_HTML'), '指定の計算書'),
+                 (repo_html if os.path.isfile(repo_html) else None, 'リポジトリの計算書'),
+                 (PAGES_URL, '公開中の計算書')]
+        for where, label in cands:
+            if not where:
+                continue
+            try:
+                return tables_from_html(_read(where)), f'{label}（{where}）から最新を読み込み', False
+            except Exception as e:  # ネット不通・HTMLの書き方が変わった など
+                notes.append(f'{label}は読めず: {type(e).__name__}: {e}')
+    t = json.load(open(BUNDLED, encoding='utf-8'))
+    check(t)
+    msg = f'同梱の控え（{BUNDLED}）を使用'
+    if notes:
+        msg += '。※最新の計算書が読めなかったため、社長の最近の変更が入っていない可能性あり（' + ' / '.join(notes) + '）'
+    return t, msg, True
+
+
+T, SOURCE, FALLBACK = load_tables()
 
 SHAPES = sorted({r['shape'] for r in T['bending_table']}) + ['複数曲げ']
 SHIMA_SHAPES = sorted({r['shape'] for r in T['shima_table']})
@@ -129,7 +177,7 @@ def keisan(shape, t=None, tate=None, yoko=None, qty=1, weight=None, length=None,
         steps.append(f'{spec["label"]}（{"×" + str(spec["value"]) if spec["type"] == "mult" else "+" + str(int(spec["value"])) + "円"}）'
                      f' +{add:,}円 → {v:,}円')
 
-    return {'total': v, 'unit': v, 'sum': v * qty, 'weight': weight, 'length': length,
+    return {'source': SOURCE, 'total': v, 'unit': v, 'sum': v * qty, 'weight': weight, 'length': length,
             'base': base, 'qty': qty, 'ref': ref, 'options': total_opts, 'breakdown': steps}
 
 
@@ -145,7 +193,12 @@ def main():
     p.add_argument('--komono', action='store_true', help='小物モード')
     p.add_argument('--qty-factor', action='store_true', help='数量係数を反映する（既定は反映しない）')
     p.add_argument('--test', action='store_true', help='答えの分かっている例で検算')
+    p.add_argument('--offline', action='store_true', help='最新の計算書を読みに行かず、同梱の控えを使う')
     a = p.parse_args()
+
+    if a.offline:
+        global T, SOURCE, FALLBACK
+        T, SOURCE, FALLBACK = load_tables(offline=True)
 
     if a.test:
         return test()
@@ -163,6 +216,7 @@ def main():
         with open(dest, 'w', encoding='utf-8-sig', newline='') as f:
             w = csv.DictWriter(f, fieldnames=list(out[0]))
             w.writeheader(), w.writerows(out)
+        print(f'単価表: {SOURCE}')
         print(f'{len(out)}件 計算して {dest} に書きました')
         return
 
@@ -170,6 +224,7 @@ def main():
         p.error('--shape（形状）か --komono が要ります。形状: ' + '、'.join(SHAPES))
     r = keisan(shape=a.shape, t=a.t, tate=a.tate, yoko=a.yoko, qty=a.qty, weight=a.weight, length=a.length,
                shima=a.shima, komono=a.komono, bend_count=a.bend_count, options=a.opt, use_qty_factor=a.qty_factor)
+    print(f'単価表: {SOURCE}')
     print(f'重量 {r["weight"]}kg / 曲げ長さ {int(r["length"])}mm / {r["ref"]}')
     for s in r['breakdown']:
         print('  ' + s)
@@ -177,35 +232,67 @@ def main():
 
 
 def test():
-    """計算書で確かめた例。ずれたら表か計算が変わっている。"""
-    # 期待値は 曲げ見積り計算書.html に同じ条件を入れて読み取った実測値（2026-11-16 照合）
+    """計算書で確かめた例で、計算の手順（表のどこを引くか・オプションの順番）を検算する。
+
+    期待値は「今の単価表のどのセルを使うはずか」から組み立てるので、社長が単価を変えても
+    手順が正しければ OK になる。2026-11-16 に計算書で読み取った金額も残してあり、
+    そこから変わった例は「単価が変わった」と表示する（NG にはしない）。
+    """
+    def cell(shape, w, col, shima=False):
+        rows = T['shima_table'] if shima else T['bending_table']
+        return next(r['c'][col] for r in rows if r['shape'] == shape and r['w'] == w)
+
+    def op(key, komono=False):
+        return T['komono_options' if komono else 'options'][key]
+
+    def add(v, key, komono=False):
+        sp = op(key, komono)
+        return round(v * sp['value']) if sp['type'] == 'mult' else v + round(sp['value'])
+
+    def qf(n):
+        return T['qty_factor'][f'factor{n}']
+
+    def km(n):
+        return T['komono_table'][str(n)]
+
+    kmin = T['komono_min']
+    L6 = dict(shape='L曲げ', t=6, tate=500, yoko=1500)      # 37.23kg → 〜50kg行、1500mm → 〜1670mm列
+    K = dict(shape='L曲げ', t=1.6, tate=100, yoko=300, komono=True)
+    # (名前, 条件, 重量, 期待値の組み立て, 2026-11-16に計算書で読んだ金額)
     cases = [
-        ('L曲げ t6 500×1500', dict(shape='L曲げ', t=6, tate=500, yoko=1500), 37.23, 2000),
-        ('コの字 t4.5 400×2000', dict(shape='コの字曲げ', t=4.5, tate=400, yoko=2000), 29.97, 2300),
-        ('四方曲げ t3.2 900×1000（余長30）', dict(shape='四方曲げ', t=3.2, tate=900, yoko=1000), 24.06, 4800),
-        ('＋中押し（×1.5）', dict(shape='L曲げ', t=6, tate=500, yoko=1500, options=['中押し']), 37.23, 3000),
-        ('＋ハゼ折（+2000）', dict(shape='L曲げ', t=6, tate=500, yoko=1500, options=['ハゼ折']), 37.23, 4000),
-        ('長尺目押しは1000mm未満だと付かない', dict(shape='L曲げ', t=6, tate=300, yoko=600, options=['長尺目押し']), 9.34, 500),
-        ('長尺目押し 1200mm（+2500）', dict(shape='L曲げ', t=6, tate=300, yoko=1200, options=['長尺目押し']), 18.39, 3500),
-        ('数量3個 係数ON（×1.5）', dict(shape='L曲げ', t=6, tate=500, yoko=1500, qty=3, use_qty_factor=True), 37.23, 3000),
-        ('数量20個 係数ON（×0.8）', dict(shape='L曲げ', t=6, tate=500, yoko=1500, qty=20, use_qty_factor=True), 37.23, 1600),
-        ('複数曲げ6回（C型4回×6/4）', dict(shape='複数曲げ', t=6, tate=500, yoko=1500, bend_count=6), 37.23, 7500),
-        ('小物 L曲げ（回数は形状から1回）', dict(shape='L曲げ', t=1.6, tate=100, yoko=300, komono=True), 0.66, 400),
-        ('小物 複数曲げ4回', dict(shape='複数曲げ', t=1.6, tate=100, yoko=300, komono=True, bend_count=4), 0.66, 800),
-        ('小物 50個 係数ON（×0.8）', dict(shape='L曲げ', t=1.6, tate=100, yoko=300, komono=True, qty=50,
-                                          use_qty_factor=True), 0.66, 320),
-        ('縞板 L曲げ（短）t4.5 300×1200', dict(shape='L曲げ（短）', t=4.5, tate=300, yoko=1200, shima=True), 14.44, 1000),
+        ('L曲げ t6 500×1500', L6, 37.23, lambda: cell('L曲げ', 50, 1), 2000),
+        ('コの字 t4.5 400×2000', dict(shape='コの字曲げ', t=4.5, tate=400, yoko=2000), 29.97,
+         lambda: cell('コの字曲げ', 30, 2), 2300),
+        ('四方曲げ t3.2 900×1000（余長30）', dict(shape='四方曲げ', t=3.2, tate=900, yoko=1000), 24.06,
+         lambda: cell('四方曲げ', 30, 1), 4800),
+        ('＋中押し', dict(L6, options=['中押し']), 37.23, lambda: add(cell('L曲げ', 50, 1), 'nakagoshi'), 3000),
+        ('＋ハゼ折', dict(L6, options=['ハゼ折']), 37.23, lambda: add(cell('L曲げ', 50, 1), 'hazeri'), 4000),
+        ('長尺目押しは1000mm未満だと付かない', dict(shape='L曲げ', t=6, tate=300, yoko=600, options=['長尺目押し']),
+         9.34, lambda: cell('L曲げ', 10, 0), 500),
+        ('長尺目押し 1200mm', dict(shape='L曲げ', t=6, tate=300, yoko=1200, options=['長尺目押し']), 18.39,
+         lambda: add(cell('L曲げ', 20, 1), 'long'), 3500),
+        ('数量3個 係数ON', dict(L6, qty=3, use_qty_factor=True), 37.23, lambda: round(cell('L曲げ', 50, 1) * qf(1)), 3000),
+        ('数量20個 係数ON', dict(L6, qty=20, use_qty_factor=True), 37.23, lambda: round(cell('L曲げ', 50, 1) * qf(3)), 1600),
+        ('複数曲げ6回（C型4回×6/4）', dict(L6, shape='複数曲げ', bend_count=6), 37.23,
+         lambda: round(cell('C型曲げ', 50, 1) * 6 / 4), 7500),
+        ('小物 L曲げ（回数は形状から1回）', K, 0.66, lambda: max(kmin, km(1)), 400),
+        ('小物 複数曲げ4回', dict(K, shape='複数曲げ', bend_count=4), 0.66, lambda: max(kmin, km(4)), 800),
+        ('小物 50個 係数ON', dict(K, qty=50, use_qty_factor=True), 0.66, lambda: max(kmin, round(km(1) * qf(3))), 320),
+        ('縞板 L曲げ（短）t4.5 300×1200', dict(shape='L曲げ（短）', t=4.5, tate=300, yoko=1200, shima=True), 14.44,
+         lambda: cell('L曲げ（短）', 20, 1, shima=True), 1000),
     ]
-    ng = 0
-    for name, kw, w_want, want in cases:
-        r = keisan(**kw)
+    print(f'単価表: {SOURCE}')
+    ng, changed = 0, 0
+    for name, kw, w_want, want_fn, recorded in cases:
+        r, want = keisan(**kw), want_fn()
         ok = r['total'] == want and abs(r['weight'] - w_want) < 0.02
         ng += not ok
+        note = '' if want == recorded else f'　※単価が変わっています（2026-11-16 は {recorded:,}円）'
+        changed += want != recorded
         print(('  OK  ' if ok else '  NG  ') + f'{name}: {r["weight"]}kg {r["total"]:,}円'
-              + ('' if ok else f'（計算書は {w_want}kg {want:,}円）'))
-    print(f'{len(cases) - ng}/{len(cases)} 一致')
+              + ('' if ok else f'（正しくは {w_want}kg {want:,}円）') + note)
+    print(f'{len(cases) - ng}/{len(cases)} 一致' + (f'（うち {changed} 例は単価改定あり）' if changed else ''))
     sys.exit(1 if ng else 0)
-
 
 if __name__ == '__main__':
     main()
