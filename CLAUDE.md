@@ -33,7 +33,7 @@
 ## スキル mage-koutin（曲げ工賃をアプリなしで計算）
 
 - `skills/mage-koutin/`（SKILL.md ＋ scripts/bend_calc.py ＋ bend_tables.json）。計算書と同じ計算を Python 単体で行う。
-- 単価表は **`python tools/export_bend_tables.py`** で 曲げ見積り計算書.html から自動生成する。**json を手で直さない。**
+- 単価表は **`python tools/export_bend_tables.py`** で 曲げ見積り計算書.html から自動生成する。同時に、全パラメーターを人が読める表にした `skills/mage-koutin/references/parameters.md` も作り直す。**json も md も手で直さない。**
 - 価格や計算を変えたら必ず `python skills/mage-koutin/scripts/bend_calc.py --test`（計算書の実測値と照合した14例）。
 - 他のアカウント・PCで使えるようにするには `python tools/install_skill.py`（`~/.claude/skills/` にコピー）。
 - ほかの人に渡すときは `python tools/package_skill.py`。単価表の作り直し → 14例の確認 → 共有サーバーの `Z:\データフォルダ\ユーザー共有用\地主\claudecode\スキル配布\mage-koutin.skill` を作る（置き場所は 環境変数 `MITUMORI_SKILL_DIST` → `tools/paths.json` の `skill_dist` → 共有サーバー → 届かなければ `配布/`（gitignore済み）の順）。受け取った人は Claude の「設定 → 機能 → スキル」でアップロードする。価格を変えたら作り直して渡し直す。

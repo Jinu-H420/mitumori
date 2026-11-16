@@ -71,6 +71,13 @@ python bend_calc.py 明細.csv -o 明細_calc.csv
    数量係数をかけたあと、1個あたり最低300円。オプションは 中押し・逆曲げ・ハゼ折 の3つだけ。
 8. 出る金額は **1個あたり・税抜**。
 
+## パラメーターを聞かれたとき
+
+単価表・余長・曲げ回数・数量係数・オプション・小物の値は、**全部** `references/parameters.md` に表でまとめてある
+（`scripts/bend_tables.json` と同じ中身を人が読める形にしたもの）。
+「コの字曲げの単価表は？」「PL4.5 の余長は？」「パラメーターを全部見せて」と聞かれたら、このファイルを読んで該当の表をそのまま見せる。
+覚えている数字で答えない。
+
 ## 形状の名前
 
 - 通常鋼板: L曲げ / Z曲げ / コの字曲げ / C型曲げ / ハット曲げ / 三方曲げ / 四方曲げ / 複数曲げ
@@ -90,7 +97,7 @@ python bend_calc.py 明細.csv -o 明細_calc.csv
 **このスキルの json を手で直さない。** HTMLを直してから、mitumori リポジトリで次を実行して写す。
 
 ```bash
-python tools/export_bend_tables.py    # bend_tables.json を作り直す
+python tools/export_bend_tables.py    # bend_tables.json と references/parameters.md を作り直す
 python skills/mage-koutin/scripts/bend_calc.py --test
 ```
 
