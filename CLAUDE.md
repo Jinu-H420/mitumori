@@ -30,6 +30,13 @@
 
 別アカウント・別PCで続きをやるときは **`/引継ぎ`**（`.claude/commands/引継ぎ.md`）。現状確認 → データ更新 → サーバー起動 → 状態報告まで行う。経緯と決め事は `docs/引継ぎ_曲げ逆算.md`。
 
+## スキル mage-koutin（曲げ工賃をアプリなしで計算）
+
+- `skills/mage-koutin/`（SKILL.md ＋ scripts/bend_calc.py ＋ bend_tables.json）。計算書と同じ計算を Python 単体で行う。
+- 単価表は **`python tools/export_bend_tables.py`** で 曲げ見積り計算書.html から自動生成する。**json を手で直さない。**
+- 価格や計算を変えたら必ず `python skills/mage-koutin/scripts/bend_calc.py --test`（計算書の実測値と照合した14例）。
+- 他のアカウント・PCで使えるようにするには `python tools/install_skill.py`（`~/.claude/skills/` にコピー）。
+
 ## 曲げ逆算ダッシュボード（実績の少ない欄を過去見積から埋める）
 
 - 過去の見積回答（材料込み単価）から「単価 − 切板代(重量×185/190円) − 穴代(50円/個)」で曲げ工賃を逆算し、計算書の実績が0〜2件の欄に当たるものを PDF と並べて判定する画面。
