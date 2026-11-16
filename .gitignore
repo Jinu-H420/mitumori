@@ -4,3 +4,6 @@ data/gyakusan/
 .claude/pub/
 .claude/settings.local.json
 tools/paths.json
+
+# 配布用にまとめたスキル（tools/package_skill.py で作り直す）
+配布/
