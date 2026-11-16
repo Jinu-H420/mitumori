@@ -37,7 +37,7 @@
 - 控えの json は **`python tools/export_bend_tables.py`** で作る。main で計算書が変わると `.github/workflows/mage-koutin.yml` が自動で作り直してコミットし、配布用 `.skill` を Actions の Artifacts に置く。**json を手で直さない。**
 - 価格や計算を変えたら `python skills/mage-koutin/scripts/bend_calc.py --test`（計算書と照合した14例）。期待値は単価表のセルから組み立てるので単価改定では NG にならず、改定箇所は「※単価が変わっています」と出る。HTML の書き方（定数名・入力欄の id）を変えて読めなくなったときは NG／控えへの切替になる。
 - 他のアカウント・PCで使えるようにするには `python tools/install_skill.py`（`~/.claude/skills/` にコピー）。
-- ほかの人に渡すときは `python tools/package_skill.py`。単価表の作り直し → 14例の確認 → 共有サーバーの `Z:\データフォルダ\ユーザー共有用\地主\claudecode\スキル配布\mage-koutin.skill` を作る（置き場所は 環境変数 `MITUMORI_SKILL_DIST` → `tools/paths.json` の `skill_dist` → 共有サーバー → 届かなければ `配布/`（gitignore済み）の順）。受け取った人は Claude の「設定 → 機能 → スキル」でアップロードする。価格を変えたら作り直して渡し直す。
+- ほかの人に渡すときは `python tools/package_skill.py`。単価表の作り直し → 14例の確認 → 共有サーバーの `Z:\データフォルダ\ユーザー共有用\地主\claudecode\スキル配布\mage-koutin.skill` を作る（置き場所は 環境変数 `MITUMORI_SKILL_DIST` → `tools/paths.json` の `skill_dist` → 共有サーバー → 届かなければ `配布/`（gitignore済み）の順）。受け取った人は Claude の「設定 → 機能 → スキル」でアップロードする。単価は配った後も最新の計算書から読むので、価格だけの変更なら渡し直しは不要（計算の手順やスキルの説明を変えたときだけ渡し直す）。
 
 ## 曲げ逆算ダッシュボード（実績の少ない欄を過去見積から埋める）
 
